@@ -347,7 +347,7 @@ def make_table():
 def collect(table):
     return tuple(sorted(table, key=table.get))
 
-def compile_file(filename, module_name):
+def load_file(filename, module_name):
     f = open(filename)
     source = f.read()
     f.close()
@@ -469,4 +469,4 @@ class Scope(ast.NodeVisitor):
 
 if __name__ == '__main__':
     sys.argv.pop(0)
-    compile_file(sys.argv[0], '__main__')
+    load_file(sys.argv[0], '__main__')
