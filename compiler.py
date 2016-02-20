@@ -351,9 +351,9 @@ def load_file(filename, module_name):
     f = open(filename)
     source = f.read()
     f.close()
-    return compile_module(module_name, filename, ast.parse(source))
+    return module_from_ast(module_name, filename, ast.parse(source))
 
-def compile_module(module_name, filename, t):
+def module_from_ast(module_name, filename, t):
     code = code_for_module(module_name, filename, t)
     module = types.ModuleType(module_name, ast.get_docstring(t))
     exec(code, module.__dict__)
