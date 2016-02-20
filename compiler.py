@@ -394,18 +394,17 @@ class Desugarer(ast.NodeTransformer):
 
     def visit_ListComp(self, t):
         t = self.generic_visit(t)
-        result_append = ast.Attribute(ast.Name('.result', load), 'append', load)
+        result_append = ast.Attribute(ast.Name('.0', load), 'append', load)
         body = ast.Expr(ast.Call(result_append, [t.elt], [], None, None))
         for loop in reversed(t.generators):
             for test in reversed(loop.ifs):
                 body = ast.If(test, [body], [])
             body = ast.For(loop.target, loop.iter, [body], [])
-        fn = [ast.Assign([ast.Name('.result', store)], ast.List([], load)),
-              body,
-              ast.Return(ast.Name('.result', load))]
-        no_args = ast.arguments([], None, [], None, [], [])
-        result = ast.Call(Function('<listcomp>', no_args, fn),
-                          [], [], None, None)
+        fn = [body,
+              ast.Return(ast.Name('.0', load))]
+        args = ast.arguments([ast.arg('.0', None)], None, [], None, [], [])
+        result = ast.Call(Function('<listcomp>', args, fn),
+                          [ast.List([], load)], [], None, None)
         return ast.copy_location(result, t)
 
 class Function(ast.FunctionDef):
