@@ -7,18 +7,13 @@ import types
 
 import six
 
-PY3, PY2 = six.PY3, not six.PY3
-
 
 def make_cell(value):
     # Thanks to Alex Gaynor for help with this bit of twistiness.
     # Construct an actual cell object by creating a closure right here,
     # and grabbing the cell object out of the function we create.
     fn = (lambda x: lambda: x)(value)
-    if PY3:
-        return fn.__closure__[0]
-    else:
-        return fn.func_closure[0]
+    return fn.__closure__[0]
 
 
 class Function(object):
@@ -55,10 +50,7 @@ class Function(object):
     def __get__(self, instance, owner):
         if instance is not None:
             return Method(instance, owner, self)
-        if PY2:
-            return Method(None, owner, self)
-        else:
-            return self
+        return self
 
     def __call__(self, *args, **kwargs):
         if re.search(r'<(?:listcomp|setcomp|dictcomp|genexpr)>$', self.func_name):
