@@ -136,7 +136,6 @@ class VirtualMachine(object):
             raise VirtualMachineError("Frames left over!")
         if self.frame and self.frame.stack:             # pragma: no cover
             raise VirtualMachineError("Data left on stack! %r" % self.frame.stack)
-
         return val
 
     def unwind_block(self, block):
@@ -326,28 +325,6 @@ class VirtualMachine(object):
     def byte_DUP_TOP(self):
         self.push(self.top())
 
-    def byte_DUP_TOPX(self, count):
-        items = self.popn(count)
-        for i in [1, 2]:
-            self.push(*items)
-
-    def byte_DUP_TOP_TWO(self):
-        # Py3 only
-        a, b = self.popn(2)
-        self.push(a, b, a, b)
-
-    def byte_ROT_TWO(self):
-        a, b = self.popn(2)
-        self.push(b, a)
-
-    def byte_ROT_THREE(self):
-        a, b, c = self.popn(3)
-        self.push(c, a, b)
-
-    def byte_ROT_FOUR(self):
-        a, b, c, d = self.popn(4)
-        self.push(d, a, b, c)
-
     ## Names
 
     def byte_LOAD_NAME(self, name):
@@ -365,9 +342,6 @@ class VirtualMachine(object):
     def byte_STORE_NAME(self, name):
         self.frame.f_locals[name] = self.pop()
 
-    def byte_DELETE_NAME(self, name):
-        del self.frame.f_locals[name]
-
     def byte_LOAD_FAST(self, name):
         if name in self.frame.f_locals:
             val = self.frame.f_locals[name]
@@ -379,9 +353,6 @@ class VirtualMachine(object):
 
     def byte_STORE_FAST(self, name):
         self.frame.f_locals[name] = self.pop()
-
-    def byte_DELETE_FAST(self, name):
-        del self.frame.f_locals[name]
 
     def byte_LOAD_GLOBAL(self, name):
         f = self.frame
@@ -437,36 +408,6 @@ class VirtualMachine(object):
         x, y = self.popn(2)
         self.push(self.BINARY_OPERATORS[op](x, y))
 
-    def inplaceOperator(self, op):
-        x, y = self.popn(2)
-        if op == 'POWER':
-            x **= y
-        elif op == 'MULTIPLY':
-            x *= y
-        elif op in ['DIVIDE', 'FLOOR_DIVIDE']:
-            x //= y
-        elif op == 'TRUE_DIVIDE':
-            x /= y
-        elif op == 'MODULO':
-            x %= y
-        elif op == 'ADD':
-            x += y
-        elif op == 'SUBTRACT':
-            x -= y
-        elif op == 'LSHIFT':
-            x <<= y
-        elif op == 'RSHIFT':
-            x >>= y
-        elif op == 'AND':
-            x &= y
-        elif op == 'XOR':
-            x ^= y
-        elif op == 'OR':
-            x |= y
-        else:           # pragma: no cover
-            raise VirtualMachineError("Unknown in-place operator: %r" % op)
-        self.push(x)
-
     def sliceOperator(self, op):
         start = 0
         end = None          # we will take this to mean end
@@ -483,8 +424,6 @@ class VirtualMachine(object):
             end = len(l)
         if op.startswith('STORE_'):
             l[start:end] = self.pop()
-        elif op.startswith('DELETE_'):
-            del l[start:end]
         else:
             self.push(l[start:end])
 
@@ -517,17 +456,9 @@ class VirtualMachine(object):
         val, obj = self.popn(2)
         setattr(obj, name, val)
 
-    def byte_DELETE_ATTR(self, name):
-        obj = self.pop()
-        delattr(obj, name)
-
     def byte_STORE_SUBSCR(self):
         val, obj, subscr = self.popn(3)
         obj[subscr] = val
-
-    def byte_DELETE_SUBSCR(self):
-        obj, subscr = self.popn(2)
-        del obj[subscr]
 
     ## Building
 
@@ -572,57 +503,6 @@ class VirtualMachine(object):
         val = self.pop()
         the_list = self.peek(count)
         the_list.append(val)
-
-    def byte_SET_ADD(self, count):
-        val = self.pop()
-        the_set = self.peek(count)
-        the_set.add(val)
-
-    def byte_MAP_ADD(self, count):
-        val, key = self.popn(2)
-        the_map = self.peek(count)
-        the_map[key] = val
-
-    ## Printing
-
-    if 0:   # Only used in the interactive interpreter, not in modules.
-        def byte_PRINT_EXPR(self):
-            print(self.pop())
-
-    def byte_PRINT_ITEM(self):
-        item = self.pop()
-        self.print_item(item)
-
-    def byte_PRINT_ITEM_TO(self):
-        to = self.pop()
-        item = self.pop()
-        self.print_item(item, to)
-
-    def byte_PRINT_NEWLINE(self):
-        self.print_newline()
-
-    def byte_PRINT_NEWLINE_TO(self):
-        to = self.pop()
-        self.print_newline(to)
-
-    def print_item(self, item, to=None):
-        if to is None:
-            to = sys.stdout
-        if to.softspace:
-            print(" ", end="", file=to)
-            to.softspace = 0
-        print(item, end="", file=to)
-        if isinstance(item, str):
-            if (not item) or (not item[-1].isspace()) or (item[-1] == " "):
-                to.softspace = 1
-        else:
-            to.softspace = 1
-
-    def print_newline(self, to=None):
-        if to is None:
-            to = sys.stdout
-        print("", file=to)
-        to.softspace = 0
 
     ## Jumps
 
@@ -673,48 +553,6 @@ class VirtualMachine(object):
             self.pop()
             self.jump(jump)
 
-    def byte_BREAK_LOOP(self):
-        return 'break'
-
-    def byte_CONTINUE_LOOP(self, dest):
-        # This is a trick with the return value.
-        # While unrolling blocks, continue and return both have to preserve
-        # state as the finally blocks are executed.  For continue, it's
-        # where to jump to, for return, it's the value to return.  It gets
-        # pushed on the stack for both, so continue puts the jump destination
-        # into return_value.
-        self.return_value = dest
-        return 'continue'
-
-    def byte_SETUP_EXCEPT(self, dest):
-        self.push_block('setup-except', dest)
-
-    def byte_SETUP_FINALLY(self, dest):
-        self.push_block('finally', dest)
-
-    def byte_END_FINALLY(self):
-        v = self.pop()
-        if isinstance(v, str):
-            why = v
-            if why in ('return', 'continue'):
-                self.return_value = self.pop()
-            if why == 'silenced':       # PY3
-                block = self.pop_block()
-                assert block.type == 'except-handler'
-                self.unwind_block(block)
-                why = None
-        elif v is None:
-            why = None
-        elif issubclass(v, BaseException):
-            exctype = v
-            val = self.pop()
-            tb = self.pop()
-            self.last_exception = (exctype, val, tb)
-            why = 'reraise'
-        else:       # pragma: no cover
-            raise VirtualMachineError("Confused END_FINALLY")
-        return why
-
     def byte_POP_BLOCK(self):
         self.pop_block()
 
@@ -759,51 +597,6 @@ class VirtualMachine(object):
 
         self.last_exception = exc_type, val, val.__traceback__
         return 'exception'
-
-    def byte_POP_EXCEPT(self):
-        block = self.pop_block()
-        if block.type != 'except-handler':
-            raise Exception("popped block is not an except handler")
-        self.unwind_block(block)
-
-    def byte_SETUP_WITH(self, dest):
-        ctxmgr = self.pop()
-        self.push(ctxmgr.__exit__)
-        ctxmgr_obj = ctxmgr.__enter__()
-        self.push_block('finally', dest)
-        self.push(ctxmgr_obj)
-
-    def byte_WITH_CLEANUP(self):
-        # The code here does some weird stack manipulation: the exit function
-        # is buried in the stack, and where depends on what's on top of it.
-        # Pull out the exit function, and leave the rest in place.
-        v = w = None
-        u = self.top()
-        if u is None:
-            exit_func = self.pop(1)
-        elif isinstance(u, str):
-            if u in ('return', 'continue'):
-                exit_func = self.pop(2)
-            else:
-                exit_func = self.pop(1)
-            u = None
-        elif issubclass(u, BaseException):
-            w, v, u = self.popn(3)
-            tp, exc, tb = self.popn(3)
-            exit_func = self.pop()
-            self.push(tp, exc, tb)
-            self.push(None)
-            self.push(w, v, u)
-            block = self.pop_block()
-            assert block.type == 'except-handler'
-            self.push_block(block.type, block.handler, block.level-1)
-        else:       # pragma: no cover
-            raise VirtualMachineError("Confused WITH_CLEANUP")
-        exit_ret = exit_func(u, v, w)
-        err = (u is not None) and bool(exit_ret)
-        if err:
-            # An error occurred, and was suppressed
-            self.push('silenced')
 
     ## Functions
 
@@ -885,29 +678,15 @@ class VirtualMachine(object):
             __import__(name, frame.f_globals, frame.f_locals, fromlist, level)
         )
 
-    def byte_IMPORT_STAR(self):
-        # TODO: this doesn't use __all__ properly.
-        mod = self.pop()
-        for attr in dir(mod):
-            if attr[0] != '_':
-                self.frame.f_locals[attr] = getattr(mod, attr)
-
     def byte_IMPORT_FROM(self, name):
         mod = self.top()
         self.push(getattr(mod, name))
 
     ## And the rest...
 
-    def byte_EXEC_STMT(self):
-        stmt, globs, locs = self.popn(3)
-        six.exec_(stmt, globs, locs)
-
     def byte_LOAD_BUILD_CLASS(self):
         # New in py3
         self.push(build_class)
-
-    def byte_STORE_LOCALS(self):
-        self.frame.f_locals = self.pop()
 
 def build_class(func, name, *bases, **kwds):
     "Like __build_class__ in bltinmodule.c, but running in the byterun VM."
