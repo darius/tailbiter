@@ -12,7 +12,7 @@ import sys
 import six
 from six.moves import reprlib
 
-from .pyobj import Frame, Block, Method, Function, Cell
+from .pyobj import Frame, Block, Function, Cell
 
 log = logging.getLogger(__name__)
 
