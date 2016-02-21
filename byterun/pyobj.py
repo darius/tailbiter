@@ -9,9 +9,6 @@ import six
 
 
 def make_cell(value):
-    # Thanks to Alex Gaynor for help with this bit of twistiness.
-    # Construct an actual cell object by creating a closure right here,
-    # and grabbing the cell object out of the function we create.
     fn = (lambda x: lambda: x)(value)
     return fn.__closure__[0]
 
@@ -34,7 +31,6 @@ class Function(object):
         self.func_closure = closure
         self.__doc__ = code.co_consts[0] if code.co_consts else None
 
-        # Sometimes, we need a real Python function.  This is for that.
         kw = {
             'argdefs': self.func_defaults,
         }
@@ -54,11 +50,6 @@ class Function(object):
 
     def __call__(self, *args, **kwargs):
         if re.search(r'<(?:listcomp|setcomp|dictcomp|genexpr)>$', self.func_name):
-            # D'oh! http://bugs.python.org/issue19611 Py2 doesn't know how to
-            # inspect set comprehensions, dict comprehensions, or generator
-            # expressions properly.  They are always functions of one argument,
-            # so just do the right thing.  Py3.4 also would fail without this
-            # hack, for list comprehensions too. (Haven't checked for other 3.x.)
             assert len(args) == 1 and not kwargs, "Surprising comprehension!"
             callargs = {".0": args[0]}
         else:
@@ -96,24 +87,6 @@ class Method(object):
 
 
 class Cell(object):
-    """A fake cell for closures.
-
-    Closures keep names in scope by storing them not in a frame, but in a
-    separate object called a cell.  Frames share references to cells, and
-    the LOAD_DEREF and STORE_DEREF opcodes get and set the value from cells.
-
-    This class acts as a cell, though it has to jump through two hoops to make
-    the simulation complete:
-
-        1. In order to create actual FunctionType functions, we have to have
-           actual cell objects, which are difficult to make. See the twisty
-           double-lambda in __init__.
-
-        2. Actual cell objects can't be modified, so to implement STORE_DEREF,
-           we store a one-element list in our cell, and then use [0] as the
-           actual value.
-
-    """
     def __init__(self, value):
         self.contents = value
 
@@ -146,7 +119,6 @@ class Frame(object):
 
         self.cells = {} if f_code.co_cellvars or f_code.co_freevars else None
         for var in f_code.co_cellvars:
-            # Make a cell for the variable in our locals, or None.
             self.cells[var] = Cell(self.f_locals.get(var))
         if f_code.co_freevars:
             assert len(f_code.co_freevars) == len(f_closure)
@@ -162,8 +134,6 @@ class Frame(object):
 
     def line_number(self):
         """Get the current line number the frame is executing."""
-        # We don't keep f_lineno up to date, so calculate it based on the
-        # instruction address and the line number table.
         lnotab = self.f_code.co_lnotab
         byte_increments = six.iterbytes(lnotab[0::2])
         line_increments = six.iterbytes(lnotab[1::2])
