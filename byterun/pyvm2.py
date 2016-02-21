@@ -354,7 +354,7 @@ class VirtualMachine(object):
     def byte_STORE_FAST(self, name):
         self.frame.f_locals[name] = self.pop()
 
-    def byte_LOAD_GLOBAL(self, name):
+    def byte_LOAD_GLOBAL(self, name): # XXX not used by the compiler; just for comparison runs
         f = self.frame
         if name in f.f_globals:
             val = f.f_globals[name]
