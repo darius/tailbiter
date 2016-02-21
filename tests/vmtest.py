@@ -69,9 +69,6 @@ class VmTestCase(unittest.TestCase):
         else:
             self.assertIsNone(tb_exc)
 
-        if 0:
-            return              # XXX
-
         # And the same again but with the compiler also running in the vm.
         vm = VirtualMachine()
         both_code = self.run_compiler_in_vm(vm, source_code)
@@ -86,18 +83,6 @@ class VmTestCase(unittest.TestCase):
         else:
             self.assertIsNone(both_exc)
 
-    def wtf(self):
-        source_code = 'print(42)'
-        filename = "<%s>" % self.id()
-
-        tb_code = compiler.code_for_module(filename, filename, ast.parse(source_code))
-
-        vm = VirtualMachine()
-        both_code = self.run_compiler_in_vm(vm, source_code)
-        return                  # XXX
-        
-        both_value, both_exc, both_stdout = self.run_in_vm(vm, ref_code)
-
     def run_compiler_in_vm(self, vm, source_code):
         "Run tailbiter on vm, compiling source_code."
         source_code = textwrap.dedent(source_code)
@@ -111,10 +96,6 @@ class VmTestCase(unittest.TestCase):
         setattr(compiler2, '__builtins__', __builtins__) # XXX move to a vm.exec() method or something
         assert not vm.frames
         vm.run_code(compiler_code, compiler2.__dict__)
-        #print('yayyyy')         # XXX
-
-        import logging
-        #logging.basicConfig(level=logging.INFO)
 
         # 2. Compile source_code by running compiler2 in the vm.
         assert not vm.frames
