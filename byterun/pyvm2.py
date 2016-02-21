@@ -21,7 +21,6 @@ repr_obj = reprlib.Repr()
 repr_obj.maxother = 120
 repper = repr_obj.repr
 
-
 class VirtualMachineError(Exception):
     """For raising errors in the operation of the VM."""
 
@@ -66,7 +65,6 @@ class VirtualMachine(object):
     def make_frame(self, code, callargs={}, f_globals=None, f_locals=None, f_closure=None):
         log.info("make_frame: code=%r, callargs=%s" % (code, repper(callargs)))
         if f_globals is not None:
-            f_globals = f_globals
             if f_locals is None:
                 f_locals = f_globals
         elif self.frames:
@@ -80,8 +78,7 @@ class VirtualMachine(object):
                 '__package__': None,
             }
         f_locals.update(callargs)
-        frame = Frame(code, f_globals, f_locals, f_closure, self.frame)
-        return frame
+        return Frame(code, f_globals, f_locals, f_closure, self.frame)
 
     def push_frame(self, frame):
         self.frames.append(frame)
@@ -89,10 +86,7 @@ class VirtualMachine(object):
 
     def pop_frame(self):
         self.frames.pop()
-        if self.frames:
-            self.frame = self.frames[-1]
-        else:
-            self.frame = None
+        self.frame = self.frames[-1] if self.frames else None
 
     def print_frames(self):
         """Print the call stack, for debugging."""
@@ -298,13 +292,11 @@ class VirtualMachine(object):
         self.frame.f_locals[name] = self.pop()
 
     def byte_LOAD_FAST(self, name):
-        if name in self.frame.f_locals:
-            val = self.frame.f_locals[name]
-        else:
+        if name not in self.frame.f_locals:
             raise UnboundLocalError(
                 "local variable '%s' referenced before assignment" % name
             )
-        self.push(val)
+        self.push(self.frame.f_locals[name])
 
     def byte_STORE_FAST(self, name):
         self.frame.f_locals[name] = self.pop()
@@ -343,7 +335,6 @@ class VirtualMachine(object):
     BINARY_OPERATORS = {
         'POWER':    pow,
         'MULTIPLY': operator.mul,
-        'DIVIDE':   getattr(operator, 'div', lambda x, y: None),
         'FLOOR_DIVIDE': operator.floordiv,
         'TRUE_DIVIDE':  operator.truediv,
         'MODULO':   operator.mod,
@@ -453,7 +444,7 @@ class VirtualMachine(object):
     def byte_JUMP_ABSOLUTE(self, jump):
         self.jump(jump)
 
-    def byte_POP_JUMP_IF_TRUE(self, jump):
+    def byte_POP_JUMP_IF_TRUE(self, jump): # XXX not emitted by the compiler
         val = self.pop()
         if val:
             self.jump(jump)
@@ -464,15 +455,13 @@ class VirtualMachine(object):
             self.jump(jump)
 
     def byte_JUMP_IF_TRUE_OR_POP(self, jump):
-        val = self.top()
-        if val:
+        if self.top():
             self.jump(jump)
         else:
             self.pop()
 
     def byte_JUMP_IF_FALSE_OR_POP(self, jump):
-        val = self.top()
-        if not val:
+        if not self.top():
             self.jump(jump)
         else:
             self.pop()
@@ -539,8 +528,7 @@ class VirtualMachine(object):
         code = self.pop()
         defaults = self.popn(argc)
         globs = self.frame.f_globals
-        fn = Function(name, code, globs, defaults, None, self)
-        self.push(fn)
+        self.push(Function(name, code, globs, defaults, None, self))
 
     def byte_LOAD_CLOSURE(self, name):
         self.push(self.frame.cells[name])
@@ -550,8 +538,7 @@ class VirtualMachine(object):
         closure, code = self.popn(2)
         defaults = self.popn(argc)
         globs = self.frame.f_globals
-        fn = Function(name, code, globs, defaults, closure, self)
-        self.push(fn)
+        self.push(Function(name, code, globs, defaults, closure, self))
 
     def byte_CALL_FUNCTION(self, arg):
         return self.call_function(arg, [], {})
@@ -579,7 +566,6 @@ class VirtualMachine(object):
         posargs.extend(args)
 
         func = self.pop()
-        frame = self.frame
         if hasattr(func, 'im_func'):
             if func.im_self:
                 posargs.insert(0, func.im_self)
@@ -593,8 +579,7 @@ class VirtualMachine(object):
                     )
                 )
             func = func.im_func
-        retval = func(*posargs, **namedargs)
-        self.push(retval)
+        self.push(func(*posargs, **namedargs))
 
     def byte_RETURN_VALUE(self):
         self.return_value = self.pop()
@@ -608,8 +593,7 @@ class VirtualMachine(object):
         )
 
     def byte_IMPORT_FROM(self, name):
-        mod = self.top()
-        self.push(getattr(mod, name))
+        self.push(getattr(self.top(), name))
 
     def byte_LOAD_BUILD_CLASS(self):
         self.push(build_class)
