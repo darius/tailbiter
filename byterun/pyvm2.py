@@ -13,7 +13,7 @@ import sys
 import six
 from six.moves import reprlib
 
-from .pyobj import Frame, Block, Method, Function, Generator, Cell
+from .pyobj import Frame, Block, Method, Function, Cell
 
 log = logging.getLogger(__name__)
 
@@ -881,35 +881,7 @@ class VirtualMachine(object):
 
     def byte_RETURN_VALUE(self):
         self.return_value = self.pop()
-        if self.frame.generator:
-            self.frame.generator.finished = True
         return "return"
-
-    def byte_YIELD_VALUE(self):
-        self.return_value = self.pop()
-        return "yield"
-
-    def byte_YIELD_FROM(self):
-        u = self.pop()
-        x = self.top()
-
-        try:
-            if not isinstance(x, Generator) or u is None:
-                # Call next on iterators.
-                retval = next(x)
-            else:
-                retval = x.send(u)
-            self.return_value = retval
-        except StopIteration as e:
-            self.pop()
-            self.push(e.value)
-        else:
-            # YIELD_FROM decrements f_lasti, so that it will be called
-            # repeatedly until a StopIteration is raised.
-            self.jump(self.frame.f_lasti - 1)
-            # Returning "yield" prevents the block stack cleanup code
-            # from executing, suspending the frame in its current state.
-            return "yield"
 
     ## Importing
 
