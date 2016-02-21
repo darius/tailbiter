@@ -421,11 +421,6 @@ class VirtualMachine(object):
         elts = self.popn(count)
         self.push(elts)
 
-    def byte_BUILD_SET(self, count):
-        # TODO: Not documented in Py2 docs.
-        elts = self.popn(count)
-        self.push(set(elts))
-
     def byte_BUILD_MAP(self, size):
         self.push({})
 
