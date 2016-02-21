@@ -57,8 +57,7 @@ class Function(object):
         frame = self._vm.make_frame(
             self.func_code, callargs, self.func_globals, {}, self.func_closure
         )
-        retval = self._vm.run_frame(frame)
-        return retval
+        return self._vm.run_frame(frame)
 
 class Method(object):
     def __init__(self, obj, _class, func):

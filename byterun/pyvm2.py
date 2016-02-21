@@ -2,7 +2,6 @@
 # Based on:
 # pyvm2 by Paul Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
 
-from __future__ import print_function, division
 import dis
 import inspect
 import linecache
@@ -128,12 +127,6 @@ class VirtualMachine(object):
             line = linecache.getline(filename, lineno, f.f_globals)
             if line:
                 print('    ' + line.strip())
-
-    def resume_frame(self, frame):
-        frame.f_back = self.frame
-        val = self.run_frame(frame)
-        frame.f_back = None
-        return val
 
     def run_code(self, code, f_globals=None, f_locals=None):
         frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
