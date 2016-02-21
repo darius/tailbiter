@@ -1,6 +1,6 @@
 """A pure-Python Python bytecode interpreter."""
-# Based on:
-# pyvm2 by Paul Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
+# Derived from Byterun by Ned Batchelder, based on pyvm2 by Paul
+# Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
 
 import dis
 import inspect
@@ -26,41 +26,24 @@ repper = repr_obj.repr
 
 class VirtualMachineError(Exception):
     """For raising errors in the operation of the VM."""
-    pass
-
 
 class VirtualMachine(object):
     def __init__(self):
-        # The call stack of frames.
         self.frames = []
-        # The current frame.
         self.frame = None
         self.return_value = None
         self.last_exception = None
 
     def top(self):
-        """Return the value at the top of the stack, with no changes."""
         return self.frame.stack[-1]
 
     def pop(self, i=0):
-        """Pop a value from the stack.
-
-        Default to the top of the stack, but `i` can be a count from the top
-        instead.
-
-        """
         return self.frame.stack.pop(-1-i)
 
     def push(self, *vals):
-        """Push values onto the value stack."""
         self.frame.stack.extend(vals)
 
     def popn(self, n):
-        """Pop a number of values from the value stack.
-
-        A list of `n` values is returned, the deepest value first.
-
-        """
         if n:
             ret = self.frame.stack[-n:]
             self.frame.stack[-n:] = []
@@ -69,11 +52,9 @@ class VirtualMachine(object):
             return []
 
     def peek(self, n):
-        """Get a value `n` entries down in the stack, without changing the stack."""
         return self.frame.stack[-n]
 
     def jump(self, jump):
-        """Move the bytecode pointer to `jump`, so it will execute next."""
         self.frame.f_lasti = jump
 
     def push_block(self, type, handler=None, level=None):
@@ -131,7 +112,6 @@ class VirtualMachine(object):
     def run_code(self, code, f_globals=None, f_locals=None):
         frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
         val = self.run_frame(frame)
-        # Check some invariants
         if self.frames:            # pragma: no cover
             raise VirtualMachineError("Frames left over!")
         if self.frame and self.frame.stack:             # pragma: no cover
@@ -152,8 +132,6 @@ class VirtualMachine(object):
             self.last_exception = exctype, value, tb
 
     def parse_byte_and_args(self):
-        """ Parse 1 - 3 bytes of bytecode into
-        an instruction and optionally arguments."""
         f = self.frame
         opoffset = f.f_lasti
         byteCode = byteint(f.f_code.co_code[opoffset])
@@ -188,7 +166,6 @@ class VirtualMachine(object):
         return byteName, arguments, opoffset
 
     def log(self, byteName, arguments, opoffset):
-        """ Log arguments, block stack, and data stack for each opcode."""
         op = "%d: %s" % (opoffset, byteName)
         if arguments:
             op += " %r" % (arguments[0],)
@@ -201,8 +178,6 @@ class VirtualMachine(object):
         log.info("%s%s" % (indent, op))
 
     def dispatch(self, byteName, arguments):
-        """ Dispatch by bytename to the corresponding methods.
-        Exceptions are caught and set on the virtual machine."""
         why = None
         try:
             if byteName.startswith('UNARY_'):
@@ -214,7 +189,6 @@ class VirtualMachine(object):
             elif 'SLICE+' in byteName:
                 self.sliceOperator(byteName)
             else:
-                # dispatch
                 bytecode_fn = getattr(self, 'byte_%s' % byteName, None)
                 if not bytecode_fn:            # pragma: no cover
                     raise VirtualMachineError(
@@ -223,7 +197,6 @@ class VirtualMachine(object):
                 why = bytecode_fn(*arguments)
 
         except:
-            # deal with exceptions encountered while executing the op.
             self.last_exception = sys.exc_info()[:2] + (None,)
             log.exception("Caught exception during execution")
             why = 'exception'
@@ -231,9 +204,6 @@ class VirtualMachine(object):
         return why
 
     def manage_block_stack(self, why):
-        """ Manage a frame's block stack.
-        Manipulate the block stack and data stack for looping,
-        exception handling, or returning."""
         assert why != 'yield'
 
         block = self.frame.block_stack[-1]
@@ -274,21 +244,13 @@ class VirtualMachine(object):
 
         return why
 
-
     def run_frame(self, frame):
-        """Run a frame until it returns (somehow).
-
-        Exceptions are raised, the return value is returned.
-
-        """
         self.push_frame(frame)
         while True:
             byteName, arguments, opoffset = self.parse_byte_and_args()
             if log.isEnabledFor(logging.INFO):
                 self.log(byteName, arguments, opoffset)
 
-            # When unwinding the block stack, we need to keep track of why we
-            # are doing it.
             why = self.dispatch(byteName, arguments)
             if why == 'exception':
                 # TODO: ceval calls PyTraceBack_Here, not sure what that does.
@@ -299,7 +261,6 @@ class VirtualMachine(object):
 
             if why != 'yield':
                 while why and frame.block_stack:
-                    # Deal with any block management we need to do.
                     why = self.manage_block_stack(why)
 
             if why:
@@ -314,8 +275,6 @@ class VirtualMachine(object):
 
         return self.return_value
 
-    ## Stack manipulation
-
     def byte_LOAD_CONST(self, const):
         self.push(const)
 
@@ -324,8 +283,6 @@ class VirtualMachine(object):
 
     def byte_DUP_TOP(self):
         self.push(self.top())
-
-    ## Names
 
     def byte_LOAD_NAME(self, name):
         frame = self.frame
@@ -372,8 +329,6 @@ class VirtualMachine(object):
 
     def byte_LOAD_LOCALS(self):
         self.push(self.frame.f_locals)
-
-    ## Operators
 
     UNARY_OPERATORS = {
         'POSITIVE': operator.pos,
@@ -445,8 +400,6 @@ class VirtualMachine(object):
         x, y = self.popn(2)
         self.push(self.COMPARE_OPERATORS[opnum](x, y))
 
-    ## Attributes and indexing
-
     def byte_LOAD_ATTR(self, attr):
         obj = self.pop()
         val = getattr(obj, attr)
@@ -459,8 +412,6 @@ class VirtualMachine(object):
     def byte_STORE_SUBSCR(self):
         val, obj, subscr = self.popn(3)
         obj[subscr] = val
-
-    ## Building
 
     def byte_BUILD_TUPLE(self, count):
         elts = self.popn(count)
@@ -476,7 +427,6 @@ class VirtualMachine(object):
         self.push(set(elts))
 
     def byte_BUILD_MAP(self, size):
-        # size is ignored.
         self.push({})
 
     def byte_STORE_MAP(self):
@@ -503,8 +453,6 @@ class VirtualMachine(object):
         val = self.pop()
         the_list = self.peek(count)
         the_list.append(val)
-
-    ## Jumps
 
     def byte_JUMP_FORWARD(self, jump):
         self.jump(jump)
@@ -535,8 +483,6 @@ class VirtualMachine(object):
             self.jump(jump)
         else:
             self.pop()
-
-    ## Blocks
 
     def byte_SETUP_LOOP(self, dest):
         self.push_block('loop', dest)
@@ -584,9 +530,6 @@ class VirtualMachine(object):
         else:
             return 'exception'      # error
 
-        # If you reach this point, you're guaranteed that
-        # val is a valid exception instance and exc_type is its class.
-        # Now do a similar thing for the cause, if present.
         if cause:
             if type(cause) == type:
                 cause = cause()
@@ -597,8 +540,6 @@ class VirtualMachine(object):
 
         self.last_exception = exc_type, val, val.__traceback__
         return 'exception'
-
-    ## Functions
 
     def byte_MAKE_FUNCTION(self, argc):
         name = self.pop()
@@ -612,7 +553,6 @@ class VirtualMachine(object):
         self.push(self.frame.cells[name])
 
     def byte_MAKE_CLOSURE(self, argc):
-        # TODO: the py3 docs don't mention this change.
         name = self.pop()
         closure, code = self.popn(2)
         defaults = self.popn(argc)
@@ -648,10 +588,8 @@ class VirtualMachine(object):
         func = self.pop()
         frame = self.frame
         if hasattr(func, 'im_func'):
-            # Methods get self as an implicit first parameter.
             if func.im_self:
                 posargs.insert(0, func.im_self)
-            # The first parameter must be the correct type.
             if not isinstance(posargs[0], func.im_class):
                 raise TypeError(
                     'unbound method %s() must be called with %s instance '
@@ -669,8 +607,6 @@ class VirtualMachine(object):
         self.return_value = self.pop()
         return "return"
 
-    ## Importing
-
     def byte_IMPORT_NAME(self, name):
         level, fromlist = self.popn(2)
         frame = self.frame
@@ -682,14 +618,10 @@ class VirtualMachine(object):
         mod = self.top()
         self.push(getattr(mod, name))
 
-    ## And the rest...
-
     def byte_LOAD_BUILD_CLASS(self):
-        # New in py3
         self.push(build_class)
 
 def build_class(func, name, *bases, **kwds):
-    "Like __build_class__ in bltinmodule.c, but running in the byterun VM."
     if not isinstance(func, Function):
         raise TypeError("func must be a function")
     if not isinstance(name, str):
@@ -710,10 +642,6 @@ def build_class(func, name, *bases, **kwds):
     else:
         namespace = prepare(name, bases, **kwds)
 
-    # Execute the body of func. This is the step that would go wrong if
-    # we tried to use the built-in __build_class__, because __build_class__
-    # does not call func, it magically executes its body directly, as we
-    # do here (except we invoke our VirtualMachine instead of CPython's).
     frame = func._vm.make_frame(func.func_code,
                                 f_globals=func.func_globals,
                                 f_locals=namespace,
@@ -726,7 +654,6 @@ def build_class(func, name, *bases, **kwds):
     return cls
 
 def calculate_metaclass(metaclass, bases):
-    "Determine the most derived metatype."
     winner = metaclass
     for base in bases:
         t = type(base)
