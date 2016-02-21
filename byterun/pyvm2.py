@@ -16,8 +16,6 @@ from .pyobj import Frame, Block, Function, Cell
 
 log = logging.getLogger(__name__)
 
-byteint = lambda b: b
-
 # Create a repr that won't overflow.
 repr_obj = reprlib.Repr()
 repr_obj.maxother = 120
@@ -134,7 +132,7 @@ class VirtualMachine(object):
     def parse_byte_and_args(self):
         f = self.frame
         opoffset = f.f_lasti
-        byteCode = byteint(f.f_code.co_code[opoffset])
+        byteCode = f.f_code.co_code[opoffset]
         f.f_lasti += 1
         byteName = dis.opname[byteCode]
         arg = None
@@ -142,7 +140,7 @@ class VirtualMachine(object):
         if byteCode >= dis.HAVE_ARGUMENT:
             arg = f.f_code.co_code[f.f_lasti:f.f_lasti+2]
             f.f_lasti += 2
-            intArg = byteint(arg[0]) + (byteint(arg[1]) << 8)
+            intArg = arg[0] + (arg[1] << 8)
             if byteCode in dis.hasconst:
                 arg = f.f_code.co_consts[intArg]
             elif byteCode in dis.hasfree:
