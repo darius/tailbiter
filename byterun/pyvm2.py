@@ -614,15 +614,11 @@ class VirtualMachine(object):
     def byte_LOAD_BUILD_CLASS(self):
         self.push(build_class)
 
-def build_class(func, name, *bases, **kwds):
+def build_class(func, name, *bases, metaclass=None, **kwds):
     if not isinstance(func, Function):
         raise TypeError("func must be a function")
     if not isinstance(name, str):
         raise TypeError("name is not a string")
-    metaclass = kwds.get('metaclass')
-    if 'metaclass' in kwds: del kwds['metaclass']
-    # (We don't just write 'metaclass=None' in the signature above
-    # because that's a syntax error in Py2.)
     if metaclass is None:
         metaclass = type(bases[0]) if bases else type
     if isinstance(metaclass, type):
