@@ -557,28 +557,12 @@ class VirtualMachine(object):
 
     def call_function(self, arg, args, kwargs):
         lenKw, lenPos = divmod(arg, 256)
-        namedargs = {}
-        for i in range(lenKw):
-            key, val = self.popn(2)
-            namedargs[key] = val
+        namedargs = dict(self.popn(2) for i in range(lenKw))
         namedargs.update(kwargs)
         posargs = self.popn(lenPos)
         posargs.extend(args)
 
         func = self.pop()
-        if hasattr(func, 'im_func'):
-            if func.im_self:
-                posargs.insert(0, func.im_self)
-            if not isinstance(posargs[0], func.im_class):
-                raise TypeError(
-                    'unbound method %s() must be called with %s instance '
-                    'as first argument (got %s instance instead)' % (
-                        func.im_func.func_name,
-                        func.im_class.__name__,
-                        type(posargs[0]).__name__,
-                    )
-                )
-            func = func.im_func
         self.push(func(*posargs, **namedargs))
 
     def byte_RETURN_VALUE(self):

@@ -44,9 +44,7 @@ class Function(object):
         )
 
     def __get__(self, instance, owner):
-        if instance is not None:
-            return Method(instance, owner, self)
-        return self
+        return self if instance is None else Method(instance, owner, self)
 
     def __call__(self, *args, **kwargs):
         if re.search(r'<(?:listcomp|setcomp|dictcomp|genexpr)>$', self.func_name):
@@ -54,10 +52,9 @@ class Function(object):
             callargs = {".0": args[0]}
         else:
             callargs = inspect.getcallargs(self._func, *args, **kwargs)
-        frame = self._vm.make_frame(
+        return self._vm.run_frame(self._vm.make_frame(
             self.func_code, callargs, self.func_globals, {}, self.func_closure
-        )
-        return self._vm.run_frame(frame)
+        ))
 
 class Method(object):
     def __init__(self, obj, _class, func):
@@ -74,6 +71,15 @@ class Method(object):
 
     def __call__(self, *args, **kwargs):
         if self.im_self is not None:
+            if not isinstance(self.im_self, self.im_class):
+                raise TypeError(
+                    'unbound method %s() must be called with %s instance '
+                    'as first argument (got %s instance instead)' % (
+                        self.im_func.func_name,
+                        self.im_class.__name__,
+                        type(self.im_self).__name__,
+                    )
+                )
             return self.im_func(self.im_self, *args, **kwargs)
         else:
             return self.im_func(*args, **kwargs)
