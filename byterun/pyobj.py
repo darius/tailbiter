@@ -104,7 +104,6 @@ class Frame(object):
         self.f_code = f_code
         self.f_globals = f_globals
         self.f_locals = f_locals
-        self.f_back = f_back
         self.stack = []
         if f_back:
             self.f_builtins = f_back.f_builtins
