@@ -2,9 +2,7 @@
 # Derived from Byterun by Ned Batchelder, based on pyvm2 by Paul
 # Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
 
-import dis, inspect, linecache, logging, operator, re, types
-import six
-from six.moves import reprlib
+import dis, inspect, operator, re, types
 
 def make_cell(value):
     fn = (lambda x: lambda: x)(value)
@@ -85,13 +83,6 @@ class Cell(object):
     def __init__(self, value):
         self.contents = value
 
-log = logging.getLogger(__name__)
-
-# Create a repr that won't overflow.
-repr_obj = reprlib.Repr()
-repr_obj.maxother = 120
-repper = repr_obj.repr
-
 class VirtualMachineError(Exception):
     """For raising errors in the operation of the VM."""
 
@@ -111,7 +102,6 @@ class VirtualMachine(object):
 
     def make_frame(self, code, callargs={},
                    f_globals=None, f_locals=None, f_closure=None):
-        log.info("make_frame: code=%r, callargs=%s" % (code, repper(callargs)))
         if f_globals is not None:
             if f_locals is None:
                 f_locals = f_globals
@@ -143,18 +133,6 @@ class VirtualMachine(object):
         self.frames.pop()
         self.frame = self.frames[-1] if self.frames else None
 
-    def print_frames(self):
-        """Print the call stack, for debugging."""
-        for f in self.frames:
-            filename = f.f_code.co_filename
-            lineno = f.line_number()
-            print('  File "%s", line %d, in %s'
-                  % (filename, lineno, f.f_code.co_name))
-            linecache.checkcache(filename)
-            line = linecache.getline(filename, lineno, f.f_globals)
-            if line:
-                print('    ' + line.strip())
-
 class Frame(object):
     def __init__(self, f_code, f_globals, f_locals, f_closure, vm):
         self.f_code = f_code
@@ -184,42 +162,12 @@ class Frame(object):
         return ('<Frame at 0x%08x: %r @ %d>'
                 % (id(self), self.f_code.co_filename, self.f_lineno))
 
-    def line_number(self):
-        """Get the current line number the frame is executing."""
-        lnotab = self.f_code.co_lnotab
-        byte_increments = six.iterbytes(lnotab[0::2])
-        line_increments = six.iterbytes(lnotab[1::2])
-
-        byte_num = 0
-        line_num = self.f_code.co_firstlineno
-
-        for byte_incr, line_incr in zip(byte_increments, line_increments):
-            byte_num += byte_incr
-            if byte_num > self.f_lasti:
-                break
-            line_num += line_incr
-
-        return line_num
-
     def run(self):
         while True:
-            opoffset = self.f_lasti
             byteName, arguments = self.parse_byte_and_args()
-            if log.isEnabledFor(logging.INFO):
-                self.log(byteName, arguments, opoffset)
             outcome = self.dispatch(byteName, arguments)
             if outcome:
                 return outcome
-
-    def log(self, byteName, arguments, opoffset):
-        op = "%d: %s" % (opoffset, byteName)
-        if arguments:
-            op += " %r" % (arguments[0],)
-        indent = ""  # XXX "    "*(len(self.frames)-1)
-        stack_rep = repper(self.stack)
-
-        log.info("  %sdata: %s" % (indent, stack_rep))
-        log.info("%s%s" % (indent, op))
 
     def parse_byte_and_args(self):
         code = self.f_code
