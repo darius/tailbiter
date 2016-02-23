@@ -344,16 +344,6 @@ class Frame(object):
         for x in reversed(seq):
             self.push(x)
 
-    def byte_BUILD_SLICE(self, count):
-        if count == 2:
-            x, y = self.popn(2)
-            self.push(slice(x, y))
-        elif count == 3:
-            x, y, z = self.popn(3)
-            self.push(slice(x, y, z))
-        else:           # pragma: no cover
-            raise VirtualMachineError("Strange BUILD_SLICE count: %r" % count)
-
     def byte_LIST_APPEND(self, count):
         val = self.pop()
         self.peek(count).append(val)
