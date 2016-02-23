@@ -5,7 +5,7 @@ import os
 import sys
 import tokenize
 
-from .pyvm2 import VirtualMachine
+from .interpreter import VirtualMachine
 
 
 # This code is ripped off from coverage.py.  Define things it expects.

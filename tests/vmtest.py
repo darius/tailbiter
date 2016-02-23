@@ -11,12 +11,12 @@ import unittest
 
 import six
 
-from byterun.pyvm2 import VirtualMachine, VirtualMachineError
+from byterun.interpreter import VirtualMachine, VirtualMachineError
 import compiler
 
 # Make this false if you need to run the debugger inside a test.
 CAPTURE_STDOUT = ('-s' not in sys.argv)
-# Make this false to see the traceback from a failure inside pyvm2.
+# Make this false to see the traceback from a failure inside interpreter.
 CAPTURE_EXCEPTION = 1
 
 
