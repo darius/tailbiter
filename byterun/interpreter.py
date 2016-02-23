@@ -59,25 +59,17 @@ class Method(object):
 
     def __repr__(self):         # pragma: no cover
         name = "%s.%s" % (self.im_class.__name__, self.im_func.func_name)
-        if self.im_self is not None:
-            return '<Bound Method %s of %s>' % (name, self.im_self)
-        else:
-            return '<Unbound Method %s>' % (name,)
+        return '<Bound Method %s of %s>' % (name, self.im_self)
 
     def __call__(self, *args, **kwargs):
-        if self.im_self is not None:
-            if not isinstance(self.im_self, self.im_class):
-                raise TypeError(
-                    'unbound method %s() must be called with %s instance '
-                    'as first argument (got %s instance instead)' % (
-                        self.im_func.func_name,
-                        self.im_class.__name__,
-                        type(self.im_self).__name__,
-                    )
-                )
-            return self.im_func(self.im_self, *args, **kwargs)
-        else:
-            return self.im_func(*args, **kwargs)
+        if not isinstance(self.im_self, self.im_class):
+            raise TypeError(
+                'unbound method %s() must be called with %s instance '
+                'as first argument (got %s instance instead)'
+                % (self.im_func.func_name,
+                   self.im_class.__name__,
+                   type(self.im_self).__name__))
+        return self.im_func(self.im_self, *args, **kwargs)
 
 class Cell(object):
     def __init__(self, value):
