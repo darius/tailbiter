@@ -30,7 +30,7 @@ class Function(object):
             'argdefs': self.func_defaults,
         }
         if closure:
-            kw['closure'] = tuple(make_cell(0) for _ in closure)
+            kw['closure'] = tuple([make_cell(0) for _ in closure])
         self._func = types.FunctionType(code, globs, **kw)
 
     def __repr__(self):         # pragma: no cover
@@ -153,11 +153,11 @@ class Frame(object):
     def parse_byte_and_args(self):
         code = self.f_code
         opcode = code.co_code[self.f_lasti]
-        self.f_lasti += 1
+        self.f_lasti = self.f_lasti + 1
         if opcode >= dis.HAVE_ARGUMENT:
             intArg = (code.co_code[self.f_lasti]
                       + (code.co_code[self.f_lasti+1] << 8))
-            self.f_lasti += 2
+            self.f_lasti = self.f_lasti + 2
             if opcode in dis.hasconst:
                 arg = code.co_consts[intArg]
             elif opcode in dis.hasfree:
@@ -402,7 +402,7 @@ class Frame(object):
 
     def call_function(self, arg, args, kwargs):
         lenKw, lenPos = divmod(arg, 256)
-        namedargs = dict(self.popn(2) for i in range(lenKw))
+        namedargs = dict([self.popn(2) for i in range(lenKw)])
         namedargs.update(kwargs)
         posargs = self.popn(lenPos)
         posargs.extend(args)
