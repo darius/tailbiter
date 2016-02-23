@@ -237,8 +237,7 @@ class Frame(object):
     def byte_LOAD_FAST(self, name):
         if name not in self.f_locals:
             raise UnboundLocalError(
-                "local variable '%s' referenced before assignment" % name
-            )
+                "local variable '%s' referenced before assignment" % name)
         self.push(self.f_locals[name])
 
     def byte_STORE_FAST(self, name):
@@ -259,9 +258,6 @@ class Frame(object):
 
     def byte_STORE_DEREF(self, name):
         self.cells[name].contents = self.pop()
-
-    def byte_LOAD_LOCALS(self):
-        self.push(self.f_locals)
 
     UNARY_OPERATORS = {
         'POSITIVE': operator.pos,
