@@ -101,7 +101,6 @@ class VmTestCase(unittest.TestCase):
         assert not vm.frames
         tb_code = compiler2.code_for_module(module_name, filename, source_ast)
         assert not vm.frames  # (i.e. the implicit running in vm should exit cleanly)
-        assert vm.frame is None
         return tb_code
 
     def get_compiler_code(self):

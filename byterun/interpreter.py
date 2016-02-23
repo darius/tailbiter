@@ -89,15 +89,12 @@ class VirtualMachineError(Exception):
 class VirtualMachine(object):
     def __init__(self):
         self.frames = []
-        self.frame = None
 
     def run_code(self, code, f_globals=None, f_locals=None):
         frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
         val = self.run_frame(frame)
         if self.frames:            # pragma: no cover
             raise VirtualMachineError("Frames left over!")
-        if self.frame and self.frame.stack:             # pragma: no cover
-            raise VirtualMachineError("Data left on stack! %r" % self.frame.stack)
         return val
 
     def make_frame(self, code, callargs={},
@@ -106,7 +103,7 @@ class VirtualMachine(object):
             if f_locals is None:
                 f_locals = f_globals
         elif self.frames:
-            f_globals = self.frame.f_globals
+            f_globals = self.frames[-1].f_globals
             f_locals = {}
         else:
             f_globals = f_locals = {
@@ -119,19 +116,11 @@ class VirtualMachine(object):
         return Frame(code, f_globals, f_locals, f_closure, self)
 
     def run_frame(self, frame):
-        self.push_frame(frame)
+        self.frames.append(frame)
         outcome = frame.run()
-        self.pop_frame()
+        self.frames.pop()
         assert outcome[0] == 'return'
         return outcome[1]
-
-    def push_frame(self, frame):
-        self.frames.append(frame)
-        self.frame = frame
-
-    def pop_frame(self):
-        self.frames.pop()
-        self.frame = self.frames[-1] if self.frames else None
 
 class Frame(object):
     def __init__(self, f_code, f_globals, f_locals, f_closure, vm):
@@ -139,8 +128,8 @@ class Frame(object):
         self.f_globals = f_globals
         self.f_locals = f_locals
         self.vm = vm
-        if vm.frame:
-            self.f_builtins = vm.frame.f_builtins
+        if vm.frames:
+            self.f_builtins = vm.frames[-1].f_builtins
         else:
             self.f_builtins = f_globals['__builtins__'] # XXX was f_locals. what's right?
             if hasattr(self.f_builtins, '__dict__'):
