@@ -209,8 +209,8 @@ class Frame(object):
     def pop(self):
         return self.stack.pop()
 
-    def push(self, *vals):
-        self.stack.extend(vals)
+    def push(self, val):
+        self.stack.append(val)
 
     def popn(self, n):
         vals = [self.stack.pop() for _ in range(n)]
