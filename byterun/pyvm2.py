@@ -260,11 +260,8 @@ class Frame(object):
         self.cells[name].contents = self.pop()
 
     UNARY_OPERATORS = {
-        'POSITIVE': operator.pos,
-        'NEGATIVE': operator.neg,
-        'NOT':      operator.not_,
-        'CONVERT':  repr,
-        'INVERT':   operator.invert,
+        'POSITIVE': operator.pos,   'NOT':    operator.not_,
+        'NEGATIVE': operator.neg,   'INVERT': operator.invert,
     }
 
     def unaryOperator(self, op):
@@ -272,19 +269,13 @@ class Frame(object):
         self.push(self.UNARY_OPERATORS[op](x))
 
     BINARY_OPERATORS = {
-        'POWER':    pow,
-        'MULTIPLY': operator.mul,
-        'FLOOR_DIVIDE': operator.floordiv,
-        'TRUE_DIVIDE':  operator.truediv,
-        'MODULO':   operator.mod,
-        'ADD':      operator.add,
-        'SUBTRACT': operator.sub,
+        'POWER':    pow,             'ADD':      operator.add,
+        'LSHIFT':   operator.lshift, 'SUBTRACT': operator.sub,
+        'RSHIFT':   operator.rshift, 'MULTIPLY': operator.mul,
+        'OR':       operator.or_,    'MODULO':   operator.mod,
+        'AND':      operator.and_,   'TRUE_DIVIDE': operator.truediv,
+        'XOR':      operator.xor,    'FLOOR_DIVIDE': operator.floordiv,
         'SUBSCR':   operator.getitem,
-        'LSHIFT':   operator.lshift,
-        'RSHIFT':   operator.rshift,
-        'AND':      operator.and_,
-        'XOR':      operator.xor,
-        'OR':       operator.or_,
     }
 
     def binaryOperator(self, op):
