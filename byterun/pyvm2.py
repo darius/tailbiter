@@ -208,9 +208,6 @@ class Frame(object):
         level = len(self.stack)
         self.block_stack.append(Block(type, handler, level))
 
-    def pop_block(self):
-        return self.block_stack.pop()
-
     def byte_POP_TOP(self):
         self.pop()
 
@@ -333,12 +330,10 @@ class Frame(object):
         obj[subscr] = val
 
     def byte_BUILD_TUPLE(self, count):
-        elts = self.popn(count)
-        self.push(tuple(elts))
+        self.push(tuple(self.popn(count)))
 
     def byte_BUILD_LIST(self, count):
-        elts = self.popn(count)
-        self.push(elts)
+        self.push(self.popn(count))
 
     def byte_BUILD_MAP(self, size):
         self.push({})
@@ -365,8 +360,7 @@ class Frame(object):
 
     def byte_LIST_APPEND(self, count):
         val = self.pop()
-        the_list = self.peek(count)
-        the_list.append(val)
+        self.peek(count).append(val)
 
     def byte_JUMP_FORWARD(self, jump):
         self.jump(jump)
@@ -412,7 +406,7 @@ class Frame(object):
             self.push(element)
 
     def byte_POP_BLOCK(self):
-        self.pop_block()
+        self.block_stack.pop()
 
     def byte_RAISE_VARARGS(self, argc):
         assert argc == 1
@@ -464,9 +458,8 @@ class Frame(object):
 
     def byte_IMPORT_NAME(self, name):
         level, fromlist = self.popn(2)
-        self.push(
-            __import__(name, self.f_globals, self.f_locals, fromlist, level)
-        )
+        val = __import__(name, self.f_globals, self.f_locals, fromlist, level)
+        self.push(val)
 
     def byte_IMPORT_FROM(self, name):
         self.push(getattr(self.top(), name))
