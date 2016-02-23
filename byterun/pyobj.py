@@ -1,6 +1,6 @@
 """Implementations of Python fundamental objects for Byterun."""
 
-import collections, inspect, re, types
+import inspect, re, types
 import six
 
 def make_cell(value):
@@ -81,5 +81,3 @@ class Method(object):
 class Cell(object):
     def __init__(self, value):
         self.contents = value
-
-Block = collections.namedtuple("Block", "type, handler, level")

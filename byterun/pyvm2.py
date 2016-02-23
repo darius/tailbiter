@@ -7,7 +7,7 @@ import dis, linecache, logging, operator
 import six
 from six.moves import reprlib
 
-from .pyobj import Block, Function, Cell
+from .pyobj import Function, Cell
 
 log = logging.getLogger(__name__)
 
@@ -93,7 +93,6 @@ class Frame(object):
                 self.f_builtins = self.f_builtins.__dict__
 
         self.stack = []
-        self.block_stack = []
 
         self.f_lineno = f_code.co_firstlineno
         self.f_lasti = 0
@@ -168,10 +167,8 @@ class Frame(object):
             op += " %r" % (arguments[0],)
         indent = ""  # XXX "    "*(len(self.frames)-1)
         stack_rep = repper(self.stack)
-        block_stack_rep = repper(self.block_stack)
 
         log.info("  %sdata: %s" % (indent, stack_rep))
-        log.info("  %sblks: %s" % (indent, block_stack_rep))
         log.info("%s%s" % (indent, op))
 
     def dispatch(self, byteName, arguments):
@@ -203,10 +200,6 @@ class Frame(object):
 
     def jump(self, jump):
         self.f_lasti = jump
-
-    def push_block(self, type, handler):
-        level = len(self.stack)
-        self.block_stack.append(Block(type, handler, level))
 
     def byte_POP_TOP(self):
         self.pop()
@@ -391,7 +384,7 @@ class Frame(object):
             self.pop()
 
     def byte_SETUP_LOOP(self, dest):
-        self.push_block('loop', dest)
+        pass
 
     def byte_GET_ITER(self):
         self.push(iter(self.pop()))
@@ -406,7 +399,7 @@ class Frame(object):
             self.push(element)
 
     def byte_POP_BLOCK(self):
-        self.block_stack.pop()
+        pass
 
     def byte_RAISE_VARARGS(self, argc):
         assert argc == 1
