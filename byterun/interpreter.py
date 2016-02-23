@@ -8,7 +8,7 @@ def make_cell(value):
     fn = (lambda x: lambda: x)(value)
     return fn.__closure__[0]
 
-class Function(object):
+class Function:
     __slots__ = [
         'func_code', 'func_name', 'func_defaults', 'func_globals',
         'func_dict', 'func_closure',
@@ -51,7 +51,7 @@ class Function(object):
             self.func_code, callargs, self.func_globals, {}, self.func_closure
         ))
 
-class Method(object):
+class Method:
     def __init__(self, obj, _class, func):
         self.im_self = obj
         self.im_class = _class
@@ -71,14 +71,14 @@ class Method(object):
                    type(self.im_self).__name__))
         return self.im_func(self.im_self, *args, **kwargs)
 
-class Cell(object):
+class Cell:
     def __init__(self, value):
         self.contents = value
 
 class VirtualMachineError(Exception):
     """For raising errors in the operation of the VM."""
 
-class VirtualMachine(object):
+class VirtualMachine:
     def __init__(self):
         self.frames = []
 
@@ -114,7 +114,7 @@ class VirtualMachine(object):
         assert outcome[0] == 'return'
         return outcome[1]
 
-class Frame(object):
+class Frame:
     def __init__(self, f_code, f_globals, f_locals, f_closure, vm):
         self.f_code = f_code
         self.f_globals = f_globals
