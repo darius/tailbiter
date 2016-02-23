@@ -561,7 +561,6 @@ class VirtualMachine(object):
         namedargs.update(kwargs)
         posargs = self.popn(lenPos)
         posargs.extend(args)
-
         func = self.pop()
         self.push(func(*posargs, **namedargs))
 
