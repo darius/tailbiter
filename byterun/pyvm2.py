@@ -130,7 +130,8 @@ class Frame(object):
 
     def run(self):
         while True:
-            byteName, arguments, opoffset = self.parse_byte_and_args()
+            opoffset = self.f_lasti
+            byteName, arguments = self.parse_byte_and_args()
             if log.isEnabledFor(logging.INFO):
                 self.log(byteName, arguments, opoffset)
             outcome = self.dispatch(byteName, arguments)
@@ -139,8 +140,7 @@ class Frame(object):
 
     def parse_byte_and_args(self):
         code = self.f_code
-        opoffset = self.f_lasti
-        opcode = code.co_code[opoffset]
+        opcode = code.co_code[self.f_lasti]
         self.f_lasti += 1
         if opcode >= dis.HAVE_ARGUMENT:
             intArg = (code.co_code[self.f_lasti]
@@ -161,8 +161,8 @@ class Frame(object):
                 arg = self.f_lasti + intArg
             else:
                 arg = intArg
-            return dis.opname[opcode], [arg], opoffset
-        return dis.opname[opcode], [], opoffset
+            return dis.opname[opcode], (arg,)
+        return dis.opname[opcode], ()
 
     def log(self, byteName, arguments, opoffset):
         op = "%d: %s" % (opoffset, byteName)
