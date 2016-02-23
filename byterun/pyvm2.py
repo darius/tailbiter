@@ -7,7 +7,7 @@ import dis, linecache, logging, operator
 import six
 from six.moves import reprlib
 
-from .pyobj import Frame, Block, Function, Cell
+from .pyobj import Block, Function, Cell
 
 log = logging.getLogger(__name__)
 
@@ -452,6 +452,53 @@ class VirtualMachine(object):
 
     def byte_LOAD_BUILD_CLASS(self):
         self.push(build_class)
+
+class Frame(object):
+    def __init__(self, f_code, f_globals, f_locals, f_closure, f_back):
+        self.f_code = f_code
+        self.f_globals = f_globals
+        self.f_locals = f_locals
+        self.stack = []
+        if f_back:
+            self.f_builtins = f_back.f_builtins
+        else:
+            self.f_builtins = f_globals['__builtins__'] # XXX was f_locals. what's right?
+            if hasattr(self.f_builtins, '__dict__'):
+                self.f_builtins = self.f_builtins.__dict__
+
+        self.f_lineno = f_code.co_firstlineno
+        self.f_lasti = 0
+
+        self.cells = {} if f_code.co_cellvars or f_code.co_freevars else None
+        for var in f_code.co_cellvars:
+            self.cells[var] = Cell(self.f_locals.get(var))
+        if f_code.co_freevars:
+            assert len(f_code.co_freevars) == len(f_closure)
+            self.cells.update(zip(f_code.co_freevars, f_closure))
+
+        self.block_stack = []
+
+    def __repr__(self):         # pragma: no cover
+        return '<Frame at 0x%08x: %r @ %d>' % (
+            id(self), self.f_code.co_filename, self.f_lineno
+        )
+
+    def line_number(self):
+        """Get the current line number the frame is executing."""
+        lnotab = self.f_code.co_lnotab
+        byte_increments = six.iterbytes(lnotab[0::2])
+        line_increments = six.iterbytes(lnotab[1::2])
+
+        byte_num = 0
+        line_num = self.f_code.co_firstlineno
+
+        for byte_incr, line_incr in zip(byte_increments, line_increments):
+            byte_num += byte_incr
+            if byte_num > self.f_lasti:
+                break
+            line_num += line_incr
+
+        return line_num
 
 def build_class(func, name, *bases, metaclass=None, **kwds):
     if not isinstance(func, Function):
