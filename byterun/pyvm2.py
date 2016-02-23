@@ -211,23 +211,22 @@ class Frame(object):
     def pop_block(self):
         return self.block_stack.pop()
 
-    def byte_LOAD_CONST(self, const):
-        self.push(const)
-
     def byte_POP_TOP(self):
         self.pop()
 
     def byte_DUP_TOP(self):
         self.push(self.top())
 
+    def byte_LOAD_CONST(self, const):
+        self.push(const)
+
     def byte_LOAD_NAME(self, name):
-        frame = self
-        if name in frame.f_locals:
-            val = frame.f_locals[name]
-        elif name in frame.f_globals:
-            val = frame.f_globals[name]
-        elif name in frame.f_builtins:
-            val = frame.f_builtins[name]
+        if name in self.f_locals:
+            val = self.f_locals[name]
+        elif name in self.f_globals:
+            val = self.f_globals[name]
+        elif name in self.f_builtins:
+            val = self.f_builtins[name]
         else:
             raise NameError("name '%s' is not defined" % name)
         self.push(val)
@@ -478,9 +477,8 @@ class Frame(object):
 
     def byte_IMPORT_NAME(self, name):
         level, fromlist = self.popn(2)
-        frame = self
         self.push(
-            __import__(name, frame.f_globals, frame.f_locals, fromlist, level)
+            __import__(name, self.f_globals, self.f_locals, fromlist, level)
         )
 
     def byte_IMPORT_FROM(self, name):
