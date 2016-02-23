@@ -2,12 +2,7 @@
 # Derived from Byterun by Ned Batchelder, based on pyvm2 by Paul
 # Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
 
-import dis
-import inspect
-import linecache
-import logging
-import operator
-import sys
+import dis, linecache, logging, operator
 
 import six
 from six.moves import reprlib
@@ -29,7 +24,6 @@ class VirtualMachine(object):
         self.frames = []
         self.frame = None
         self.return_value = None
-        self.last_exception = None
 
     def top(self):
         return self.frame.stack[-1]
@@ -62,7 +56,8 @@ class VirtualMachine(object):
     def pop_block(self):
         return self.frame.block_stack.pop()
 
-    def make_frame(self, code, callargs={}, f_globals=None, f_locals=None, f_closure=None):
+    def make_frame(self, code, callargs={},
+                   f_globals=None, f_locals=None, f_closure=None):
         log.info("make_frame: code=%r, callargs=%s" % (code, repper(callargs)))
         if f_globals is not None:
             if f_locals is None:
@@ -109,19 +104,6 @@ class VirtualMachine(object):
         if self.frame and self.frame.stack:             # pragma: no cover
             raise VirtualMachineError("Data left on stack! %r" % self.frame.stack)
         return val
-
-    def unwind_block(self, block):
-        if block.type == 'except-handler':
-            offset = 3
-        else:
-            offset = 0
-
-        while len(self.frame.stack) > block.level + offset:
-            self.pop()
-
-        if block.type == 'except-handler':
-            tb, value, exctype = self.popn(3)
-            self.last_exception = exctype, value, tb
 
     def parse_byte_and_args(self):
         f = self.frame
@@ -170,71 +152,17 @@ class VirtualMachine(object):
         log.info("%s%s" % (indent, op))
 
     def dispatch(self, byteName, arguments):
-        why = None
-        try:
-            if byteName.startswith('UNARY_'):
-                self.unaryOperator(byteName[6:])
-            elif byteName.startswith('BINARY_'):
-                self.binaryOperator(byteName[7:])
-            elif byteName.startswith('INPLACE_'):
-                self.inplaceOperator(byteName[8:])
-            elif 'SLICE+' in byteName:
-                self.sliceOperator(byteName)
-            else:
-                bytecode_fn = getattr(self, 'byte_%s' % byteName, None)
-                if not bytecode_fn:            # pragma: no cover
-                    raise VirtualMachineError(
-                        "unknown bytecode type: %s" % byteName
-                    )
-                why = bytecode_fn(*arguments)
-
-        except:
-            self.last_exception = sys.exc_info()[:2] + (None,)
-            log.exception("Caught exception during execution")
-            why = 'exception'
-
-        return why
-
-    def manage_block_stack(self, why):
-        assert why != 'yield'
-
-        block = self.frame.block_stack[-1]
-        if block.type == 'loop' and why == 'continue':
-            self.jump(self.return_value)
-            why = None
-            return why
-
-        self.pop_block()
-        self.unwind_block(block)
-
-        if block.type == 'loop' and why == 'break':
-            why = None
-            self.jump(block.handler)
-            return why
-
-        if (
-            why == 'exception' and
-            block.type in ['setup-except', 'finally']
-        ):
-            self.push_block('except-handler')
-            exctype, value, tb = self.last_exception
-            self.push(tb, value, exctype)
-            # PyErr_Normalize_Exception goes here
-            self.push(tb, value, exctype)
-            why = None
-            self.jump(block.handler)
-            return why
-
-        elif block.type == 'finally':
-            if why in ('return', 'continue'):
-                self.push(self.return_value)
-            self.push(why)
-
-            why = None
-            self.jump(block.handler)
-            return why
-
-        return why
+        if byteName.startswith('UNARY_'):
+            self.unaryOperator(byteName[6:])
+        elif byteName.startswith('BINARY_'):
+            self.binaryOperator(byteName[7:])
+        elif byteName.startswith('INPLACE_'):
+            self.inplaceOperator(byteName[8:])
+        elif 'SLICE+' in byteName:
+            self.sliceOperator(byteName)
+        else:
+            bytecode_fn = getattr(self, 'byte_%s' % byteName, None)
+            return bytecode_fn(*arguments)
 
     def run_frame(self, frame):
         self.push_frame(frame)
@@ -242,30 +170,9 @@ class VirtualMachine(object):
             byteName, arguments, opoffset = self.parse_byte_and_args()
             if log.isEnabledFor(logging.INFO):
                 self.log(byteName, arguments, opoffset)
-
-            why = self.dispatch(byteName, arguments)
-            if why == 'exception':
-                # TODO: ceval calls PyTraceBack_Here, not sure what that does.
-                pass
-
-            if why == 'reraise':
-                why = 'exception'
-
-            if why != 'yield':
-                while why and frame.block_stack:
-                    why = self.manage_block_stack(why)
-
-            if why:
-                break
-
-        # TODO: handle generator exception state
-
-        self.pop_frame()
-
-        if why == 'exception':
-            six.reraise(*self.last_exception)
-
-        return self.return_value
+            if self.dispatch(byteName, arguments):
+                self.pop_frame()
+                return self.return_value
 
     def byte_LOAD_CONST(self, const):
         self.push(const)
@@ -473,55 +380,20 @@ class VirtualMachine(object):
         self.push(iter(self.pop()))
 
     def byte_FOR_ITER(self, jump):
-        iterobj = self.top()
-        try:
-            v = next(iterobj)
-            self.push(v)
-        except StopIteration:
+        void = object()
+        element = next(self.top(), void)
+        if element is void:
             self.pop()
             self.jump(jump)
+        else:
+            self.push(element)
 
     def byte_POP_BLOCK(self):
         self.pop_block()
 
     def byte_RAISE_VARARGS(self, argc):
-        cause = exc = None
-        if argc == 2:
-            cause = self.pop()
-            exc = self.pop()
-        elif argc == 1:
-            exc = self.pop()
-        return self.do_raise(exc, cause)
-
-    def do_raise(self, exc, cause):
-        if exc is None:         # reraise
-            exc_type, val, tb = self.last_exception
-            if exc_type is None:
-                return 'exception'      # error
-            else:
-                return 'reraise'
-
-        elif type(exc) == type:
-            # As in `raise ValueError`
-            exc_type = exc
-            val = exc()             # Make an instance.
-        elif isinstance(exc, BaseException):
-            # As in `raise ValueError('foo')`
-            exc_type = type(exc)
-            val = exc
-        else:
-            return 'exception'      # error
-
-        if cause:
-            if type(cause) == type:
-                cause = cause()
-            elif not isinstance(cause, BaseException):
-                return 'exception'  # error
-
-            val.__cause__ = cause
-
-        self.last_exception = exc_type, val, val.__traceback__
-        return 'exception'
+        assert argc == 1
+        raise self.pop()
 
     def byte_MAKE_FUNCTION(self, argc):
         name = self.pop()
