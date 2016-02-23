@@ -24,37 +24,6 @@ class VirtualMachine(object):
         self.frames = []
         self.frame = None
 
-    def top(self):
-        return self.frame.stack[-1]
-
-    def pop(self, i=0):
-        return self.frame.stack.pop(-1-i)
-
-    def push(self, *vals):
-        self.frame.stack.extend(vals)
-
-    def popn(self, n):
-        if n:
-            ret = self.frame.stack[-n:]
-            self.frame.stack[-n:] = []
-            return ret
-        else:
-            return []
-
-    def peek(self, n):
-        return self.frame.stack[-n]
-
-    def jump(self, jump):
-        self.frame.f_lasti = jump
-
-    def push_block(self, type, handler=None, level=None):
-        if level is None:
-            level = len(self.frame.stack)
-        self.frame.block_stack.append(Block(type, handler, level))
-
-    def pop_block(self):
-        return self.frame.block_stack.pop()
-
     def make_frame(self, code, callargs={},
                    f_globals=None, f_locals=None, f_closure=None):
         log.info("make_frame: code=%r, callargs=%s" % (code, repper(callargs)))
@@ -72,7 +41,7 @@ class VirtualMachine(object):
                 '__package__': None,
             }
         f_locals.update(callargs)
-        return Frame(code, f_globals, f_locals, f_closure, self.frame)
+        return Frame(code, f_globals, f_locals, f_closure, self)
 
     def push_frame(self, frame):
         self.frames.append(frame)
@@ -104,8 +73,73 @@ class VirtualMachine(object):
             raise VirtualMachineError("Data left on stack! %r" % self.frame.stack)
         return val
 
+    def run_frame(self, frame):
+        self.push_frame(frame)
+        outcome = frame.run()
+        self.pop_frame()
+        assert outcome[0] == 'return'
+        return outcome[1]
+
+class Frame(object):
+    def __init__(self, f_code, f_globals, f_locals, f_closure, vm):
+        self.f_code = f_code
+        self.f_globals = f_globals
+        self.f_locals = f_locals
+        self.stack = []
+        self.vm = vm
+        f_back = vm.frame
+        if f_back:
+            self.f_builtins = f_back.f_builtins
+        else:
+            self.f_builtins = f_globals['__builtins__'] # XXX was f_locals. what's right?
+            if hasattr(self.f_builtins, '__dict__'):
+                self.f_builtins = self.f_builtins.__dict__
+
+        self.f_lineno = f_code.co_firstlineno
+        self.f_lasti = 0
+
+        self.cells = {} if f_code.co_cellvars or f_code.co_freevars else None
+        for var in f_code.co_cellvars:
+            self.cells[var] = Cell(self.f_locals.get(var))
+        if f_code.co_freevars:
+            assert len(f_code.co_freevars) == len(f_closure)
+            self.cells.update(zip(f_code.co_freevars, f_closure))
+
+        self.block_stack = []
+
+    def __repr__(self):         # pragma: no cover
+        return '<Frame at 0x%08x: %r @ %d>' % (
+            id(self), self.f_code.co_filename, self.f_lineno
+        )
+
+    def line_number(self):
+        """Get the current line number the frame is executing."""
+        lnotab = self.f_code.co_lnotab
+        byte_increments = six.iterbytes(lnotab[0::2])
+        line_increments = six.iterbytes(lnotab[1::2])
+
+        byte_num = 0
+        line_num = self.f_code.co_firstlineno
+
+        for byte_incr, line_incr in zip(byte_increments, line_increments):
+            byte_num += byte_incr
+            if byte_num > self.f_lasti:
+                break
+            line_num += line_incr
+
+        return line_num
+
+    def run(self):
+        while True:
+            byteName, arguments, opoffset = self.parse_byte_and_args()
+            if log.isEnabledFor(logging.INFO):
+                self.log(byteName, arguments, opoffset)
+            outcome = self.dispatch(byteName, arguments)
+            if outcome:
+                return outcome
+
     def parse_byte_and_args(self):
-        f = self.frame
+        f = self
         opoffset = f.f_lasti
         byteCode = f.f_code.co_code[opoffset]
         f.f_lasti += 1
@@ -142,9 +176,9 @@ class VirtualMachine(object):
         op = "%d: %s" % (opoffset, byteName)
         if arguments:
             op += " %r" % (arguments[0],)
-        indent = "    "*(len(self.frames)-1)
-        stack_rep = repper(self.frame.stack)
-        block_stack_rep = repper(self.frame.block_stack)
+        indent = ""  # XXX "    "*(len(self.frames)-1)
+        stack_rep = repper(self.stack)
+        block_stack_rep = repper(self.block_stack)
 
         log.info("  %sdata: %s" % (indent, stack_rep))
         log.info("  %sblks: %s" % (indent, block_stack_rep))
@@ -163,17 +197,36 @@ class VirtualMachine(object):
             bytecode_fn = getattr(self, 'byte_%s' % byteName, None)
             return bytecode_fn(*arguments)
 
-    def run_frame(self, frame):
-        self.push_frame(frame)
-        while True:
-            byteName, arguments, opoffset = self.parse_byte_and_args()
-            if log.isEnabledFor(logging.INFO):
-                self.log(byteName, arguments, opoffset)
-            outcome = self.dispatch(byteName, arguments)
-            if outcome:
-                self.pop_frame()
-                assert outcome[0] == 'return'
-                return outcome[1]
+    def top(self):
+        return self.stack[-1]
+
+    def pop(self, i=0):
+        return self.stack.pop(-1-i)
+
+    def push(self, *vals):
+        self.stack.extend(vals)
+
+    def popn(self, n):
+        if n:
+            ret = self.stack[-n:]
+            self.stack[-n:] = []
+            return ret
+        else:
+            return []
+
+    def peek(self, n):
+        return self.stack[-n]
+
+    def jump(self, jump):
+        self.f_lasti = jump
+
+    def push_block(self, type, handler=None, level=None):
+        if level is None:
+            level = len(self.stack)
+        self.block_stack.append(Block(type, handler, level))
+
+    def pop_block(self):
+        return self.block_stack.pop()
 
     def byte_LOAD_CONST(self, const):
         self.push(const)
@@ -185,7 +238,7 @@ class VirtualMachine(object):
         self.push(self.top())
 
     def byte_LOAD_NAME(self, name):
-        frame = self.frame
+        frame = self
         if name in frame.f_locals:
             val = frame.f_locals[name]
         elif name in frame.f_globals:
@@ -197,20 +250,20 @@ class VirtualMachine(object):
         self.push(val)
 
     def byte_STORE_NAME(self, name):
-        self.frame.f_locals[name] = self.pop()
+        self.f_locals[name] = self.pop()
 
     def byte_LOAD_FAST(self, name):
-        if name not in self.frame.f_locals:
+        if name not in self.f_locals:
             raise UnboundLocalError(
                 "local variable '%s' referenced before assignment" % name
             )
-        self.push(self.frame.f_locals[name])
+        self.push(self.f_locals[name])
 
     def byte_STORE_FAST(self, name):
-        self.frame.f_locals[name] = self.pop()
+        self.f_locals[name] = self.pop()
 
     def byte_LOAD_GLOBAL(self, name): # XXX not used by the compiler; just for comparison runs
-        f = self.frame
+        f = self
         if name in f.f_globals:
             val = f.f_globals[name]
         elif name in f.f_builtins:
@@ -220,13 +273,13 @@ class VirtualMachine(object):
         self.push(val)
 
     def byte_LOAD_DEREF(self, name):
-        self.push(self.frame.cells[name].contents)
+        self.push(self.cells[name].contents)
 
     def byte_STORE_DEREF(self, name):
-        self.frame.cells[name].contents = self.pop()
+        self.cells[name].contents = self.pop()
 
     def byte_LOAD_LOCALS(self):
-        self.push(self.frame.f_locals)
+        self.push(self.f_locals)
 
     UNARY_OPERATORS = {
         'POSITIVE': operator.pos,
@@ -400,18 +453,18 @@ class VirtualMachine(object):
         name = self.pop()
         code = self.pop()
         defaults = self.popn(argc)
-        globs = self.frame.f_globals
-        self.push(Function(name, code, globs, defaults, None, self))
+        globs = self.f_globals
+        self.push(Function(name, code, globs, defaults, None, self.vm))
 
     def byte_LOAD_CLOSURE(self, name):
-        self.push(self.frame.cells[name])
+        self.push(self.cells[name])
 
     def byte_MAKE_CLOSURE(self, argc):
         name = self.pop()
         closure, code = self.popn(2)
         defaults = self.popn(argc)
-        globs = self.frame.f_globals
-        self.push(Function(name, code, globs, defaults, closure, self))
+        globs = self.f_globals
+        self.push(Function(name, code, globs, defaults, closure, self.vm))
 
     def byte_CALL_FUNCTION(self, arg):
         return self.call_function(arg, [], {})
@@ -442,7 +495,7 @@ class VirtualMachine(object):
 
     def byte_IMPORT_NAME(self, name):
         level, fromlist = self.popn(2)
-        frame = self.frame
+        frame = self
         self.push(
             __import__(name, frame.f_globals, frame.f_locals, fromlist, level)
         )
@@ -452,53 +505,6 @@ class VirtualMachine(object):
 
     def byte_LOAD_BUILD_CLASS(self):
         self.push(build_class)
-
-class Frame(object):
-    def __init__(self, f_code, f_globals, f_locals, f_closure, f_back):
-        self.f_code = f_code
-        self.f_globals = f_globals
-        self.f_locals = f_locals
-        self.stack = []
-        if f_back:
-            self.f_builtins = f_back.f_builtins
-        else:
-            self.f_builtins = f_globals['__builtins__'] # XXX was f_locals. what's right?
-            if hasattr(self.f_builtins, '__dict__'):
-                self.f_builtins = self.f_builtins.__dict__
-
-        self.f_lineno = f_code.co_firstlineno
-        self.f_lasti = 0
-
-        self.cells = {} if f_code.co_cellvars or f_code.co_freevars else None
-        for var in f_code.co_cellvars:
-            self.cells[var] = Cell(self.f_locals.get(var))
-        if f_code.co_freevars:
-            assert len(f_code.co_freevars) == len(f_closure)
-            self.cells.update(zip(f_code.co_freevars, f_closure))
-
-        self.block_stack = []
-
-    def __repr__(self):         # pragma: no cover
-        return '<Frame at 0x%08x: %r @ %d>' % (
-            id(self), self.f_code.co_filename, self.f_lineno
-        )
-
-    def line_number(self):
-        """Get the current line number the frame is executing."""
-        lnotab = self.f_code.co_lnotab
-        byte_increments = six.iterbytes(lnotab[0::2])
-        line_increments = six.iterbytes(lnotab[1::2])
-
-        byte_num = 0
-        line_num = self.f_code.co_firstlineno
-
-        for byte_incr, line_incr in zip(byte_increments, line_increments):
-            byte_num += byte_incr
-            if byte_num > self.f_lasti:
-                break
-            line_num += line_incr
-
-        return line_num
 
 def build_class(func, name, *bases, metaclass=None, **kwds):
     if not isinstance(func, Function):
