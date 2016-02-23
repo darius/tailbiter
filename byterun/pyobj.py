@@ -89,12 +89,6 @@ class Cell(object):
     def __init__(self, value):
         self.contents = value
 
-    def get(self):
-        return self.contents
-
-    def set(self, value):
-        self.contents = value
-
 
 Block = collections.namedtuple("Block", "type, handler, level")
 

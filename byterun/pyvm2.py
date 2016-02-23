@@ -312,10 +312,10 @@ class VirtualMachine(object):
         self.push(val)
 
     def byte_LOAD_DEREF(self, name):
-        self.push(self.frame.cells[name].get())
+        self.push(self.frame.cells[name].contents)
 
     def byte_STORE_DEREF(self, name):
-        self.frame.cells[name].set(self.pop())
+        self.frame.cells[name].contents = self.pop()
 
     def byte_LOAD_LOCALS(self):
         self.push(self.frame.f_locals)
@@ -607,7 +607,7 @@ def build_class(func, name, *bases, metaclass=None, **kwds):
 
     cls = metaclass(name, bases, namespace)
     if isinstance(cell, Cell):
-        cell.set(cls)
+        cell.contents = cls
     return cls
 
 def calculate_metaclass(metaclass, bases):
