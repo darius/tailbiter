@@ -197,11 +197,9 @@ class Frame(object):
 
     def dispatch(self, byteName, arguments):
         if byteName.startswith('UNARY_'):
-            self.unaryOperator(byteName[6:])
+            self.unaryOperator(byteName.replace('UNARY_', '', 1))
         elif byteName.startswith('BINARY_'):
-            self.binaryOperator(byteName[7:])
-        elif 'SLICE+' in byteName:
-            self.sliceOperator(byteName)
+            self.binaryOperator(byteName.replace('BINARY_', '', 1))
         else:
             return getattr(self, 'byte_%s' % byteName)(*arguments)
 
@@ -295,25 +293,6 @@ class Frame(object):
     def binaryOperator(self, op):
         x, y = self.popn(2)
         self.push(self.BINARY_OPERATORS[op](x, y))
-
-    def sliceOperator(self, op):
-        start = 0
-        end = None          # we will take this to mean end
-        op, count = op[:-2], int(op[-1])
-        if count == 1:
-            start = self.pop()
-        elif count == 2:
-            end = self.pop()
-        elif count == 3:
-            end = self.pop()
-            start = self.pop()
-        l = self.pop()
-        if end is None:
-            end = len(l)
-        if op.startswith('STORE_'):
-            l[start:end] = self.pop()
-        else:
-            self.push(l[start:end])
 
     COMPARE_OPERATORS = [
         operator.lt,
