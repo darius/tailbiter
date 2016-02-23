@@ -195,19 +195,16 @@ class Frame(object):
     def top(self):
         return self.stack[-1]
 
-    def pop(self):
-        return self.stack.pop()
-
     def push(self, val):
         self.stack.append(val)
+
+    def pop(self):
+        return self.stack.pop()
 
     def popn(self, n):
         vals = [self.stack.pop() for _ in range(n)]
         vals.reverse()
         return vals
-
-    def peek(self, n):
-        return self.stack[-n]
 
     def jump(self, jump):
         self.f_lasti = jump
@@ -220,6 +217,12 @@ class Frame(object):
 
     def byte_LOAD_CONST(self, const):
         self.push(const)
+
+    def byte_LOAD_GLOBAL(self, name): # XXX not used by the compiler; just for comparison runs
+        if   name in self.f_globals:  val = self.f_globals[name]
+        elif name in self.f_builtins: val = self.f_builtins[name]
+        else: raise NameError("name '%s' is not defined" % name)
+        self.push(val)
 
     def byte_LOAD_NAME(self, name):
         if   name in self.f_locals:   val = self.f_locals[name]
@@ -239,12 +242,6 @@ class Frame(object):
 
     def byte_STORE_FAST(self, name):
         self.f_locals[name] = self.pop()
-
-    def byte_LOAD_GLOBAL(self, name): # XXX not used by the compiler; just for comparison runs
-        if name in self.f_globals:    val = self.f_globals[name]
-        elif name in self.f_builtins: val = self.f_builtins[name]
-        else: raise NameError("name '%s' is not defined" % name)
-        self.push(val)
 
     def byte_LOAD_DEREF(self, name):
         self.push(self.cells[name].contents)
@@ -327,7 +324,7 @@ class Frame(object):
 
     def byte_LIST_APPEND(self, count):
         val = self.pop()
-        self.peek(count).append(val)
+        self.stack[-count].append(val)
 
     def byte_JUMP_FORWARD(self, jump):
         self.jump(jump)
