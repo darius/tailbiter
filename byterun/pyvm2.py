@@ -135,6 +135,16 @@ class Frame(object):
             if outcome:
                 return outcome
 
+    def log(self, byteName, arguments, opoffset):
+        op = "%d: %s" % (opoffset, byteName)
+        if arguments:
+            op += " %r" % (arguments[0],)
+        indent = ""  # XXX "    "*(len(self.frames)-1)
+        stack_rep = repper(self.stack)
+
+        log.info("  %sdata: %s" % (indent, stack_rep))
+        log.info("%s%s" % (indent, op))
+
     def parse_byte_and_args(self):
         code = self.f_code
         opcode = code.co_code[self.f_lasti]
@@ -161,16 +171,6 @@ class Frame(object):
             return dis.opname[opcode], (arg,)
         return dis.opname[opcode], ()
 
-    def log(self, byteName, arguments, opoffset):
-        op = "%d: %s" % (opoffset, byteName)
-        if arguments:
-            op += " %r" % (arguments[0],)
-        indent = ""  # XXX "    "*(len(self.frames)-1)
-        stack_rep = repper(self.stack)
-
-        log.info("  %sdata: %s" % (indent, stack_rep))
-        log.info("%s%s" % (indent, op))
-
     def dispatch(self, byteName, arguments):
         if byteName.startswith('UNARY_'):
             self.unaryOperator(byteName[6:])
@@ -184,8 +184,8 @@ class Frame(object):
     def top(self):
         return self.stack[-1]
 
-    def pop(self, i=0):
-        return self.stack.pop(-1-i)
+    def pop(self):
+        return self.stack.pop()
 
     def push(self, *vals):
         self.stack.extend(vals)
