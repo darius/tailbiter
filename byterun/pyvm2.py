@@ -108,9 +108,8 @@ class Frame(object):
         self.block_stack = []
 
     def __repr__(self):         # pragma: no cover
-        return '<Frame at 0x%08x: %r @ %d>' % (
-            id(self), self.f_code.co_filename, self.f_lineno
-        )
+        return ('<Frame at 0x%08x: %r @ %d>'
+                % (id(self), self.f_code.co_filename, self.f_lineno))
 
     def line_number(self):
         """Get the current line number the frame is executing."""
@@ -139,38 +138,31 @@ class Frame(object):
                 return outcome
 
     def parse_byte_and_args(self):
-        f = self
-        opoffset = f.f_lasti
-        byteCode = f.f_code.co_code[opoffset]
-        f.f_lasti += 1
-        byteName = dis.opname[byteCode]
-        arg = None
-        arguments = []
-        if byteCode >= dis.HAVE_ARGUMENT:
-            arg = f.f_code.co_code[f.f_lasti:f.f_lasti+2]
-            f.f_lasti += 2
-            intArg = arg[0] + (arg[1] << 8)
-            if byteCode in dis.hasconst:
-                arg = f.f_code.co_consts[intArg]
-            elif byteCode in dis.hasfree:
-                if intArg < len(f.f_code.co_cellvars):
-                    arg = f.f_code.co_cellvars[intArg]
+        code = self.f_code
+        opoffset = self.f_lasti
+        opcode = code.co_code[opoffset]
+        self.f_lasti += 1
+        if opcode >= dis.HAVE_ARGUMENT:
+            intArg = (code.co_code[self.f_lasti]
+                      + (code.co_code[self.f_lasti+1] << 8))
+            self.f_lasti += 2
+            if opcode in dis.hasconst:
+                arg = code.co_consts[intArg]
+            elif opcode in dis.hasfree:
+                if intArg < len(code.co_cellvars):
+                    arg = code.co_cellvars[intArg]
                 else:
-                    var_idx = intArg - len(f.f_code.co_cellvars)
-                    arg = f.f_code.co_freevars[var_idx]
-            elif byteCode in dis.hasname:
-                arg = f.f_code.co_names[intArg]
-            elif byteCode in dis.hasjrel:
-                arg = f.f_lasti + intArg
-            elif byteCode in dis.hasjabs:
-                arg = intArg
-            elif byteCode in dis.haslocal:
-                arg = f.f_code.co_varnames[intArg]
+                    arg = code.co_freevars[intArg - len(code.co_cellvars)]
+            elif opcode in dis.hasname:
+                arg = code.co_names[intArg]
+            elif opcode in dis.haslocal:
+                arg = code.co_varnames[intArg]
+            elif opcode in dis.hasjrel:
+                arg = self.f_lasti + intArg
             else:
                 arg = intArg
-            arguments = [arg]
-
-        return byteName, arguments, opoffset
+            return dis.opname[opcode], [arg], opoffset
+        return dis.opname[opcode], [], opoffset
 
     def log(self, byteName, arguments, opoffset):
         op = "%d: %s" % (opoffset, byteName)
