@@ -24,6 +24,15 @@ class VirtualMachine(object):
         self.frames = []
         self.frame = None
 
+    def run_code(self, code, f_globals=None, f_locals=None):
+        frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
+        val = self.run_frame(frame)
+        if self.frames:            # pragma: no cover
+            raise VirtualMachineError("Frames left over!")
+        if self.frame and self.frame.stack:             # pragma: no cover
+            raise VirtualMachineError("Data left on stack! %r" % self.frame.stack)
+        return val
+
     def make_frame(self, code, callargs={},
                    f_globals=None, f_locals=None, f_closure=None):
         log.info("make_frame: code=%r, callargs=%s" % (code, repper(callargs)))
@@ -43,6 +52,13 @@ class VirtualMachine(object):
         f_locals.update(callargs)
         return Frame(code, f_globals, f_locals, f_closure, self)
 
+    def run_frame(self, frame):
+        self.push_frame(frame)
+        outcome = frame.run()
+        self.pop_frame()
+        assert outcome[0] == 'return'
+        return outcome[1]
+
     def push_frame(self, frame):
         self.frames.append(frame)
         self.frame = frame
@@ -56,44 +72,28 @@ class VirtualMachine(object):
         for f in self.frames:
             filename = f.f_code.co_filename
             lineno = f.line_number()
-            print('  File "%s", line %d, in %s' % (
-                filename, lineno, f.f_code.co_name
-            ))
+            print('  File "%s", line %d, in %s'
+                  % (filename, lineno, f.f_code.co_name))
             linecache.checkcache(filename)
             line = linecache.getline(filename, lineno, f.f_globals)
             if line:
                 print('    ' + line.strip())
-
-    def run_code(self, code, f_globals=None, f_locals=None):
-        frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
-        val = self.run_frame(frame)
-        if self.frames:            # pragma: no cover
-            raise VirtualMachineError("Frames left over!")
-        if self.frame and self.frame.stack:             # pragma: no cover
-            raise VirtualMachineError("Data left on stack! %r" % self.frame.stack)
-        return val
-
-    def run_frame(self, frame):
-        self.push_frame(frame)
-        outcome = frame.run()
-        self.pop_frame()
-        assert outcome[0] == 'return'
-        return outcome[1]
 
 class Frame(object):
     def __init__(self, f_code, f_globals, f_locals, f_closure, vm):
         self.f_code = f_code
         self.f_globals = f_globals
         self.f_locals = f_locals
-        self.stack = []
         self.vm = vm
-        f_back = vm.frame
-        if f_back:
-            self.f_builtins = f_back.f_builtins
+        if vm.frame:
+            self.f_builtins = vm.frame.f_builtins
         else:
             self.f_builtins = f_globals['__builtins__'] # XXX was f_locals. what's right?
             if hasattr(self.f_builtins, '__dict__'):
                 self.f_builtins = self.f_builtins.__dict__
+
+        self.stack = []
+        self.block_stack = []
 
         self.f_lineno = f_code.co_firstlineno
         self.f_lasti = 0
@@ -104,8 +104,6 @@ class Frame(object):
         if f_code.co_freevars:
             assert len(f_code.co_freevars) == len(f_closure)
             self.cells.update(zip(f_code.co_freevars, f_closure))
-
-        self.block_stack = []
 
     def __repr__(self):         # pragma: no cover
         return ('<Frame at 0x%08x: %r @ %d>'
@@ -181,13 +179,10 @@ class Frame(object):
             self.unaryOperator(byteName[6:])
         elif byteName.startswith('BINARY_'):
             self.binaryOperator(byteName[7:])
-        elif byteName.startswith('INPLACE_'):
-            self.inplaceOperator(byteName[8:])
         elif 'SLICE+' in byteName:
             self.sliceOperator(byteName)
         else:
-            bytecode_fn = getattr(self, 'byte_%s' % byteName, None)
-            return bytecode_fn(*arguments)
+            return getattr(self, 'byte_%s' % byteName)(*arguments)
 
     def top(self):
         return self.stack[-1]
@@ -199,12 +194,9 @@ class Frame(object):
         self.stack.extend(vals)
 
     def popn(self, n):
-        if n:
-            ret = self.stack[-n:]
-            self.stack[-n:] = []
-            return ret
-        else:
-            return []
+        vals = [self.stack.pop() for _ in range(n)]
+        vals.reverse()
+        return vals
 
     def peek(self, n):
         return self.stack[-n]
@@ -212,9 +204,8 @@ class Frame(object):
     def jump(self, jump):
         self.f_lasti = jump
 
-    def push_block(self, type, handler=None, level=None):
-        if level is None:
-            level = len(self.stack)
+    def push_block(self, type, handler):
+        level = len(self.stack)
         self.block_stack.append(Block(type, handler, level))
 
     def pop_block(self):
