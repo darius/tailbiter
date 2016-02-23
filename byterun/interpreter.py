@@ -494,12 +494,9 @@ def build_class(func, name, *bases, metaclass=None, **kwds):
     if isinstance(metaclass, type):
         metaclass = calculate_metaclass(metaclass, bases)
 
-    try:
-        prepare = metaclass.__prepare__
-    except AttributeError:
-        namespace = {}
-    else:
-        namespace = prepare(name, bases, **kwds)
+    void = object()
+    prepare = getattr(metaclass, '__prepare__', void)
+    namespace = {} if prepare is void else prepare(name, bases, **kwds)
 
     frame = func._vm.make_frame(func.func_code,
                                 f_globals=func.func_globals,
