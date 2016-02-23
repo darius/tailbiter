@@ -23,7 +23,6 @@ class VirtualMachine(object):
     def __init__(self):
         self.frames = []
         self.frame = None
-        self.return_value = None
 
     def top(self):
         return self.frame.stack[-1]
@@ -170,9 +169,11 @@ class VirtualMachine(object):
             byteName, arguments, opoffset = self.parse_byte_and_args()
             if log.isEnabledFor(logging.INFO):
                 self.log(byteName, arguments, opoffset)
-            if self.dispatch(byteName, arguments):
+            outcome = self.dispatch(byteName, arguments)
+            if outcome:
                 self.pop_frame()
-                return self.return_value
+                assert outcome[0] == 'return'
+                return outcome[1]
 
     def byte_LOAD_CONST(self, const):
         self.push(const)
@@ -437,8 +438,7 @@ class VirtualMachine(object):
         self.push(func(*posargs, **namedargs))
 
     def byte_RETURN_VALUE(self):
-        self.return_value = self.pop()
-        return "return"
+        return 'return', self.pop()
 
     def byte_IMPORT_NAME(self, name):
         level, fromlist = self.popn(2)
