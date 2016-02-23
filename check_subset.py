@@ -1,6 +1,5 @@
 """
 Check if a program conforms to our Python subset.
-XXX rule out Break and Set nodes -- bytecompile2 doesn't implement them
 XXX check that names are legal Python identifiers, since our
     bytecompile assumes it can add illegal ones without clashing
 """
@@ -96,7 +95,7 @@ class Checker(ast.NodeVisitor):
         pass
 
     def visit_Break(self, t):
-        assert self.in_loop
+        assert False
 
     def visit_BoolOp(self, t):
         assert type(t.op) in self.ops_bool
@@ -128,7 +127,7 @@ class Checker(ast.NodeVisitor):
             self(k)
 
     def visit_Set(self, t):
-        self(t.elts)
+        assert False
 
     def visit_Compare(self, t):
         self(t.left)
