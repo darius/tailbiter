@@ -222,14 +222,10 @@ class Frame(object):
         self.push(const)
 
     def byte_LOAD_NAME(self, name):
-        if name in self.f_locals:
-            val = self.f_locals[name]
-        elif name in self.f_globals:
-            val = self.f_globals[name]
-        elif name in self.f_builtins:
-            val = self.f_builtins[name]
-        else:
-            raise NameError("name '%s' is not defined" % name)
+        if   name in self.f_locals:   val = self.f_locals[name]
+        elif name in self.f_globals:  val = self.f_globals[name]
+        elif name in self.f_builtins: val = self.f_builtins[name]
+        else: raise NameError("name '%s' is not defined" % name)
         self.push(val)
 
     def byte_STORE_NAME(self, name):
@@ -245,13 +241,9 @@ class Frame(object):
         self.f_locals[name] = self.pop()
 
     def byte_LOAD_GLOBAL(self, name): # XXX not used by the compiler; just for comparison runs
-        f = self
-        if name in f.f_globals:
-            val = f.f_globals[name]
-        elif name in f.f_builtins:
-            val = f.f_builtins[name]
-        else:
-            raise NameError("name '%s' is not defined" % name)
+        if name in self.f_globals:    val = self.f_globals[name]
+        elif name in self.f_builtins: val = self.f_builtins[name]
+        else: raise NameError("name '%s' is not defined" % name)
         self.push(val)
 
     def byte_LOAD_DEREF(self, name):
