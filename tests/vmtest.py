@@ -95,7 +95,7 @@ class VmTestCase(unittest.TestCase):
         compiler2 = types.ModuleType('compiler2')
         setattr(compiler2, '__builtins__', __builtins__) # XXX move to a vm.exec() method or something
         assert not vm.frames
-        vm.run_code(compiler_code, compiler2.__dict__)
+        vm.run_code(compiler_code, compiler2.__dict__, compiler2.__dict__)
 
         # 2. Compile source_code by running compiler2 in the vm.
         assert not vm.frames
@@ -124,7 +124,7 @@ class VmTestCase(unittest.TestCase):
 
         vm_value = vm_exc = None
         try:
-            vm_value = vm.run_code(code)
+            vm_value = vm.run_code(code, None, None)
         except VirtualMachineError:         # pragma: no cover
             # If the VM code raises an error, show it.
             raise

@@ -82,15 +82,14 @@ class VirtualMachine:
     def __init__(self):
         self.frames = []
 
-    def run_code(self, code, f_globals=None, f_locals=None):
-        frame = self.make_frame(code, f_globals=f_globals, f_locals=f_locals)
+    def run_code(self, code, f_globals, f_locals):
+        frame = self.make_frame(code, {}, f_globals, f_locals, None)
         val = self.run_frame(frame)
         if self.frames:            # pragma: no cover
             raise VirtualMachineError("Frames left over!")
         return val
 
-    def make_frame(self, code, callargs={},
-                   f_globals=None, f_locals=None, f_closure=None):
+    def make_frame(self, code, callargs, f_globals, f_locals, f_closure):
         if f_globals is not None:
             if f_locals is None:
                 f_locals = f_globals
@@ -423,11 +422,12 @@ class Frame:
     def byte_LOAD_BUILD_CLASS(self):
         self.push(build_class)
 
-def build_class(func, name, *bases, metaclass=None, **kwds):
+def build_class(func, name, *bases, **kwds):
     if not isinstance(func, Function):
         raise TypeError("func must be a function")
     if not isinstance(name, str):
         raise TypeError("name is not a string")
+    metaclass = kwds.pop('metaclass', None)
     if metaclass is None:
         metaclass = type(bases[0]) if bases else type
     if isinstance(metaclass, type):
@@ -437,10 +437,8 @@ def build_class(func, name, *bases, metaclass=None, **kwds):
     prepare = getattr(metaclass, '__prepare__', void)
     namespace = {} if prepare is void else prepare(name, bases, **kwds)
 
-    frame = func._vm.make_frame(func.func_code,
-                                f_globals=func.func_globals,
-                                f_locals=namespace,
-                                f_closure=func.func_closure)
+    frame = func._vm.make_frame(func.func_code, {}, func.func_globals,
+                                namespace, func.func_closure)
     cell = func._vm.run_frame(frame)
 
     cls = metaclass(name, bases, namespace)

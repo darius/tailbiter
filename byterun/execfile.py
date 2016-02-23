@@ -21,7 +21,7 @@ NoSource = Exception
 
 def exec_code_object(code, env):
     vm = VirtualMachine()
-    vm.run_code(code, f_globals=env)
+    vm.run_code(code, env, env)
 
 
 # from coverage.py:
