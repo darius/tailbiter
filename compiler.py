@@ -350,7 +350,8 @@ class CodeGen(ast.NodeVisitor):
         docstring = ast.get_docstring(t)
         assembly = (  self.load('__name__')      + self.store('__module__')
                     + self.load_const(t.name)    + self.store('__qualname__')
-                    + self.load_const(docstring) + self.store('__doc__')
+                    + (no_op if docstring is None else
+                       self.load_const(docstring) + self.store('__doc__'))
                     + self(t.body) + self.load_const(None) + op.RETURN_VALUE)
         return self.make_code(assembly, t.name, 0, False, False)
 
