@@ -352,7 +352,8 @@ class CodeGen(ast.NodeVisitor):
                     + self.load_const(t.name)    + self.store('__qualname__')
                     + (no_op if docstring is None else
                        self.load_const(docstring) + self.store('__doc__'))
-                    + self(t.body) + self.load_const(None) + op.RETURN_VALUE)
+                    + self(t.body)
+                    + self.load_const(None) + op.RETURN_VALUE)
         return self.make_code(assembly, t.name, 0, False, False)
 
 def make_table():
