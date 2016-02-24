@@ -26,17 +26,13 @@ class Function:
         self.func_closure = closure
         self.__doc__ = code.co_consts[0] if code.co_consts else None
 
-        kw = {
-            'argdefs': self.func_defaults,
-        }
+        kw = {'argdefs': self.func_defaults}
         if closure:
             kw['closure'] = tuple([make_cell(0) for _ in closure])
         self._func = types.FunctionType(code, globs, **kw)
 
     def __repr__(self):         # pragma: no cover
-        return '<Function %s at 0x%08x>' % (
-            self.func_name, id(self)
-        )
+        return '<Function %s at 0x%08x>' % (self.func_name, id(self))
 
     def __get__(self, instance, owner):
         return self if instance is None else Method(instance, owner, self)
