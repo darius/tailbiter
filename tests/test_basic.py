@@ -14,48 +14,6 @@ class TestIt(vmtest.VmTestCase):
             print(out)
             """)
 
-    def XXX_test_slice(self):
-        self.assert_ok("""\
-            print("hello, world"[3:8])
-            """)
-        self.assert_ok("""\
-            print("hello, world"[:8])
-            """)
-        self.assert_ok("""\
-            print("hello, world"[3:])
-            """)
-        self.assert_ok("""\
-            print("hello, world"[:])
-            """)
-        self.assert_ok("""\
-            print("hello, world"[::-1])
-            """)
-        self.assert_ok("""\
-            print("hello, world"[3:8:2])
-            """)
-
-    def XXX_test_slice_assignment(self):
-        self.assert_ok("""\
-            l = list(range(10))
-            l[3:8] = ["x"]
-            print(l)
-            """)
-        self.assert_ok("""\
-            l = list(range(10))
-            l[:8] = ["x"]
-            print(l)
-            """)
-        self.assert_ok("""\
-            l = list(range(10))
-            l[3:] = ["x"]
-            print(l)
-            """)
-        self.assert_ok("""\
-            l = list(range(10))
-            l[:] = ["x"]
-            print(l)
-            """)
-
     def test_building_stuff(self):
         self.assert_ok("""\
             print((1+1, 2+2, 3+3))

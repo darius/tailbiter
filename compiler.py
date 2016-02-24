@@ -169,8 +169,16 @@ class CodeGen(ast.NodeVisitor):
 
     def visit_Call(self, t):
         assert len(t.args) < 256 and len(t.keywords) < 256
-        return (self(t.func) + self(t.args) + self(t.keywords)
-                + op.CALL_FUNCTION((len(t.keywords) << 8) | len(t.args)))
+        opcode = (op.CALL_FUNCTION_VAR_KW if t.starargs and t.kwargs else
+                  op.CALL_FUNCTION_VAR    if t.starargs else
+                  op.CALL_FUNCTION_KW     if t.kwargs else
+                  op.CALL_FUNCTION)
+        return (self(t.func)
+                + self(t.args)
+                + self(t.keywords)
+                + (self(t.starargs) if t.starargs else no_op)
+                + (self(t.kwargs)   if t.kwargs   else no_op)
+                + opcode((len(t.keywords) << 8) | len(t.args)))
 
     def visit_keyword(self, t):
         return self.load_const(t.arg) + self(t.value)

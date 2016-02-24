@@ -44,13 +44,13 @@ class TestFunctions(vmtest.VmTestCase):
             one()
             """)
 
-    def XXX_test_calling_functions_with_args_kwargs(self):
+    def test_calling_functions_with_args_kwargs(self):
         self.assert_ok("""\
-            def fn(a, b=17, c="Hello", d=[]):
+            def fn(a, b, c, d):
                 d.append(99)
                 print(a, b, c, d)
-            fn(6, *[77, 88])
-            fn(**{'c': 23, 'a': 7})
+            fn(6, *[77, 88, [99]])
+            fn(**{'c': 23, 'a': 7, 'b': 42, 'd': [111]})
             fn(6, *[77], **{'c': 23, 'd': [123]})
             """)
 
