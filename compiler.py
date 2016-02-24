@@ -383,15 +383,17 @@ def code_for_module(module_name, filename, t):
 def desugar(t):
     return ast.fix_missing_locations(Desugarer().visit(t))
 
+def Call(fn, args):
+    return ast.Call(fn, args, [], None, None)
+
 class Desugarer(ast.NodeTransformer):
 
     def visit_Assert(self, t):
         t = self.generic_visit(t)
         result = ast.If(t.test,
                         [],
-                        [ast.Raise(ast.Call(ast.Name('AssertionError', load),
-                                            [] if t.msg is None else [t.msg],
-                                            [], None, None),
+                        [ast.Raise(Call(ast.Name('AssertionError', load),
+                                        [] if t.msg is None else [t.msg]),
                                    None)])
         return ast.copy_location(result, t)
 
@@ -405,13 +407,13 @@ class Desugarer(ast.NodeTransformer):
         fn = Function(t.name, t.args, t.body)
         result = ast.Assign([ast.Name(t.name, store)], fn)
         for d in reversed(t.decorator_list):
-            result = ast.Call(d, [result], [], None, None)
+            result = Call(d, [result])
         return ast.copy_location(result, t)
 
     def visit_ListComp(self, t):
         t = self.generic_visit(t)
         result_append = ast.Attribute(ast.Name('.0', load), 'append', load)
-        body = ast.Expr(ast.Call(result_append, [t.elt], [], None, None))
+        body = ast.Expr(Call(result_append, [t.elt]))
         for loop in reversed(t.generators):
             for test in reversed(loop.ifs):
                 body = ast.If(test, [body], [])
@@ -419,8 +421,8 @@ class Desugarer(ast.NodeTransformer):
         fn = [body,
               ast.Return(ast.Name('.0', load))]
         args = ast.arguments([ast.arg('.0', None)], None, [], None, [], [])
-        result = ast.Call(Function('<listcomp>', args, fn),
-                          [ast.List([], load)], [], None, None)
+        result = Call(Function('<listcomp>', args, fn),
+                      [ast.List([], load)])
         return ast.copy_location(result, t)
 
 class Function(ast.FunctionDef):
