@@ -203,10 +203,10 @@ class Checker(ast.NodeVisitor):
 
     def check_arguments(self, args):
         for arg in args.args: self.check_arg(arg)
-        assert not args.vararg
+        if args.vararg: self.check_arg(args.vararg)
         assert not getattr(args, 'varargannotation', None)
         assert not args.kwonlyargs
-        assert not args.kwarg
+        if args.kwarg: self.check_arg(args.kwarg)
         assert not getattr(args, 'kwargannotation', None)
         assert not args.defaults
         assert not args.kw_defaults

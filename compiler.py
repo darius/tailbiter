@@ -118,13 +118,15 @@ class CodeGen(ast.NodeVisitor):
 
     def compile_module(self, t, name):
         assembly = self(t.body) + self.load_const(None) + op.RETURN_VALUE
-        return self.make_code(assembly, name, 0)
+        return self.make_code(assembly, name, 0, False, False)
 
-    def make_code(self, assembly, name, argcount):
+    def make_code(self, assembly, name, argcount, has_varargs, has_varkws):
         kwonlyargcount = 0
         nlocals = len(self.varnames)
         stacksize = plumb_depths(assembly)
         flags = (  (0x02 if nlocals                  else 0)
+                 | (0x04 if has_varargs              else 0)
+                 | (0x08 if has_varkws               else 0)
                  | (0x10 if self.scope.freevars      else 0)
                  | (0x40 if not self.scope.derefvars else 0))
         firstlineno, lnotab = make_lnotab(assembly)
@@ -134,6 +136,7 @@ class CodeGen(ast.NodeVisitor):
                               collect(self.names), collect(self.varnames),
                               self.filename, name, firstlineno, lnotab,
                               self.scope.freevars, self.scope.cellvars)
+
     def load_const(self, constant):
         return op.LOAD_CONST(self.constants[constant, type(constant)])
 
@@ -329,8 +332,11 @@ class CodeGen(ast.NodeVisitor):
         self.load_const(ast.get_docstring(t))
         for arg in t.args.args:
             self.varnames[arg.arg]
+        if t.args.vararg: self.varnames[t.args.vararg.arg]
+        if t.args.kwarg:  self.varnames[t.args.kwarg.arg]
         assembly = self(t.body) + self.load_const(None) + op.RETURN_VALUE
-        return self.make_code(assembly, t.name, len(t.args.args))
+        return self.make_code(assembly, t.name,
+                              len(t.args.args), t.args.vararg, t.args.kwarg)
 
     def visit_ClassDef(self, t):
         code = self.sprout(t).compile_class(t)
@@ -346,7 +352,7 @@ class CodeGen(ast.NodeVisitor):
                     + self.load_const(t.name)    + self.store('__qualname__')
                     + self.load_const(docstring) + self.store('__doc__')
                     + self(t.body) + self.load_const(None) + op.RETURN_VALUE)
-        return self.make_code(assembly, t.name, 0)
+        return self.make_code(assembly, t.name, 0, False, False)
 
 def make_table():
     table = collections.defaultdict(lambda: len(table))

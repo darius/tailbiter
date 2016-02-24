@@ -54,7 +54,7 @@ class TestFunctions(vmtest.VmTestCase):
             fn(6, *[77], **{'c': 23, 'd': [123]})
             """)
 
-    def XXX_test_defining_functions_with_args_kwargs(self):
+    def test_defining_functions_with_args_kwargs(self):
         self.assert_ok("""\
             def fn(*args):
                 print("args is %r" % (args,))
@@ -79,7 +79,7 @@ class TestFunctions(vmtest.VmTestCase):
             fn('a', 'b', 1, 2, red=True, blue=False)
             """)
 
-    def XXX_test_defining_functions_with_empty_args_kwargs(self):
+    def test_defining_functions_with_empty_args_kwargs(self):
         self.assert_ok("""\
             def fn(*args):
                 print("args is %r" % (args,))
@@ -120,7 +120,7 @@ class TestFunctions(vmtest.VmTestCase):
             assert them == (10,7,1,0)
             """)
 
-    def XXX_test_wraps(self):
+    def test_wraps(self):
         self.assert_ok("""\
             from functools import wraps
             def my_decorator(f):
