@@ -451,7 +451,8 @@ class Scope(ast.NodeVisitor):
         for stmt in t.body: subscope.visit(stmt)
 
     def visit_Function(self, t):
-        subscope = Scope(t, [arg.arg for arg in t.args.args])
+        all_args = list(t.args.args) + [t.args.vararg, t.args.kwarg]
+        subscope = Scope(t, [arg.arg for arg in all_args if arg])
         self.children[t] = subscope
         for stmt in t.body: subscope.visit(stmt)
 
