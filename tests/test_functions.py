@@ -219,3 +219,18 @@ class TestClosures(vmtest.VmTestCase):
 
             assert g(f([42])) == 42
             """)
+
+    def test_scope_analysis_of_varargs(self):
+        self.assert_ok("""\
+            def f(*xs):
+                return lambda: xs[0]
+            print(f(137)())
+            """)
+
+    def test_scope_analysis_of_varkw(self):
+        self.assert_ok("""\
+            def f(**kws):
+                return lambda: kws['y']
+            print(f(y=183)())
+            """)
+
