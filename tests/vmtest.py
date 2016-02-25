@@ -58,8 +58,10 @@ class VmTestCase(unittest.TestCase):
 
         # Same thing for tailbiter-compiled code run in byterun.
         tb_code = compiler.code_for_module(filename, filename, ast.parse(source_code))
-        
-        tb_value, tb_exc, tb_stdout = self.run_in_vm(VirtualMachine(), ref_code)
+
+        if 0: dis_code(tb_code)
+
+        tb_value, tb_exc, tb_stdout = self.run_in_vm(VirtualMachine(), tb_code)
 
         self.assert_same_exception(tb_exc, py_exc)
         self.assertEqual(tb_stdout.getvalue(), py_stdout.getvalue())
