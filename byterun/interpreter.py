@@ -2,7 +2,7 @@
 # Derived from Byterun by Ned Batchelder, based on pyvm2 by Paul
 # Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
 
-import dis, inspect, operator, re, types
+import builtins, dis, inspect, operator, re, types
 
 def make_cell(value):
     fn = (lambda x: lambda: x)(value)
@@ -43,9 +43,8 @@ class Function:
             callargs = {".0": args[0]}
         else:
             callargs = inspect.getcallargs(self._func, *args, **kwargs)
-        return self._vm.run_frame(self._vm.make_frame(
-            self.func_code, self.func_closure, self.func_globals, callargs
-        ))
+        return self._vm.run_frame(self.func_code, self.func_closure,
+                                  self.func_globals, callargs)
 
 class Method:
     def __init__(self, obj, _class, func):
@@ -79,29 +78,14 @@ class VirtualMachine:
         self.frames = []
 
     def exec(self, code, f_globals, f_locals):
-        frame = self.make_frame(code, None, f_globals, f_locals)
-        val = self.run_frame(frame)
-        if self.frames:            # pragma: no cover
-            raise VirtualMachineError("Frames left over!")
-        return val
+        if f_globals is None: f_globals = builtins.globals()
+        if f_locals is None:  f_locals = f_globals
+        if '__builtins__' not in f_globals:
+            f_globals['__builtins__'] = builtins.__dict__
+        return self.run_frame(code, None, f_globals, f_locals)
 
-    def make_frame(self, code, f_closure, f_globals, f_locals):
-        if f_globals is not None:
-            if f_locals is None:
-                f_locals = f_globals
-        elif self.frames:
-            f_globals = self.frames[-1].f_globals
-            f_locals = {}
-        else:
-            f_globals = f_locals = {
-                '__builtins__': __builtins__,
-                '__name__': '__main__',
-                '__doc__': None,
-                '__package__': None,
-            }
-        return Frame(code, f_globals, f_locals, f_closure, self)
-
-    def run_frame(self, frame):
+    def run_frame(self, code, f_closure, f_globals, f_locals):
+        frame = Frame(self, code, f_closure, f_globals, f_locals)
         self.frames.append(frame)
         outcome = frame.run()
         self.frames.pop()
@@ -109,17 +93,17 @@ class VirtualMachine:
         return outcome[1]
 
 class Frame:
-    def __init__(self, f_code, f_globals, f_locals, f_closure, vm):
+    def __init__(self, vm, f_code, f_closure, f_globals, f_locals):
+        self.vm = vm
         self.f_code = f_code
         self.f_globals = f_globals
         self.f_locals = f_locals
-        self.vm = vm
-        if vm.frames:
-            self.f_builtins = vm.frames[-1].f_builtins
-        else:
-            self.f_builtins = f_globals['__builtins__'] # XXX was f_locals. what's right?
-            if hasattr(self.f_builtins, '__dict__'):
-                self.f_builtins = self.f_builtins.__dict__
+
+        self.f_builtins = f_globals.get('__builtins__')
+        if isinstance(self.f_builtins, types.ModuleType):
+            self.f_builtins = self.f_builtins.__dict__
+        if self.f_builtins is None:
+            self.f_builtins = {'None': None}
 
         self.stack = []
 
@@ -432,9 +416,8 @@ def build_class(func, name, *bases, **kwds):
     prepare = getattr(metaclass, '__prepare__', void)
     namespace = {} if prepare is void else prepare(name, bases, **kwds)
 
-    frame = func._vm.make_frame(func.func_code, func.func_closure,
-                                func.func_globals, namespace)
-    cell = func._vm.run_frame(frame)
+    cell = func._vm.run_frame(func.func_code, func.func_closure,
+                              func.func_globals, namespace)
 
     cls = metaclass(name, bases, namespace)
     if isinstance(cell, Cell):
