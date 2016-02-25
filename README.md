@@ -6,11 +6,12 @@ It can optionally run on top of a port of
 [byterun](https://github.com/nedbat/byterun) to Python 3.4. (The
 original Byterun runs in 2.7 or 3.3.)
 
-I've greatly stripped down the version of byterun in this repo, and
-extended the compiler a bit, towards compiling the interpreter.
+I've greatly stripped down and modified the version of byterun in this
+repo, and extended the compiler a bit, towards compiling the
+interpreter.
 
-To do: make the whole package metacircular. That is, get
-compiler-compiled interpreter to run on the interpreter.
+To do: actually run the compiler-compiled interpreter on the
+interpreter.
 
 This is a continuation of
 https://github.com/darius/500lines/tree/master/bytecode-compiler
