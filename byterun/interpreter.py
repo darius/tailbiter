@@ -44,7 +44,7 @@ class Function:
         else:
             callargs = inspect.getcallargs(self._func, *args, **kwargs)
         return self._vm.run_frame(self._vm.make_frame(
-            self.func_code, self.func_globals, callargs, self.func_closure
+            self.func_code, self.func_closure, self.func_globals, callargs
         ))
 
 class Method:
@@ -79,13 +79,13 @@ class VirtualMachine:
         self.frames = []
 
     def run_code(self, code, f_globals, f_locals):
-        frame = self.make_frame(code, f_globals, f_locals, None)
+        frame = self.make_frame(code, None, f_globals, f_locals)
         val = self.run_frame(frame)
         if self.frames:            # pragma: no cover
             raise VirtualMachineError("Frames left over!")
         return val
 
-    def make_frame(self, code, f_globals, f_locals, f_closure):
+    def make_frame(self, code, f_closure, f_globals, f_locals):
         if f_globals is not None:
             if f_locals is None:
                 f_locals = f_globals
@@ -432,8 +432,8 @@ def build_class(func, name, *bases, **kwds):
     prepare = getattr(metaclass, '__prepare__', void)
     namespace = {} if prepare is void else prepare(name, bases, **kwds)
 
-    frame = func._vm.make_frame(func.func_code, func.func_globals,
-                                namespace, func.func_closure)
+    frame = func._vm.make_frame(func.func_code, func.func_closure,
+                                func.func_globals, namespace)
     cell = func._vm.run_frame(frame)
 
     cls = metaclass(name, bases, namespace)
