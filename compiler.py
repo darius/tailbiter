@@ -405,9 +405,9 @@ class Desugarer(ast.NodeTransformer):
     def visit_FunctionDef(self, t):
         t = self.generic_visit(t)
         fn = Function(t.name, t.args, t.body)
-        result = ast.Assign([ast.Name(t.name, store)], fn)
         for d in reversed(t.decorator_list):
-            result = Call(d, [result])
+            fn = Call(d, [fn])
+        result = ast.Assign([ast.Name(t.name, store)], fn)
         return ast.copy_location(result, t)
 
     def visit_ListComp(self, t):
