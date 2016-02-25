@@ -78,7 +78,7 @@ class VirtualMachine:
     def __init__(self):
         self.frames = []
 
-    def run_code(self, code, f_globals, f_locals):
+    def exec(self, code, f_globals, f_locals):
         frame = self.make_frame(code, None, f_globals, f_locals)
         val = self.run_frame(frame)
         if self.frames:            # pragma: no cover
