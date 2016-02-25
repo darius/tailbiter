@@ -367,23 +367,23 @@ class Frame:
         return self.call_function(arg, [], {})
 
     def byte_CALL_FUNCTION_VAR(self, arg):
-        args = self.pop()
-        return self.call_function(arg, args, {})
+        varargs = self.pop()
+        return self.call_function(arg, varargs, {})
 
     def byte_CALL_FUNCTION_KW(self, arg):
         kwargs = self.pop()
         return self.call_function(arg, [], kwargs)
 
     def byte_CALL_FUNCTION_VAR_KW(self, arg):
-        args, kwargs = self.popn(2)
-        return self.call_function(arg, args, kwargs)
+        varargs, kwargs = self.popn(2)
+        return self.call_function(arg, varargs, kwargs)
 
-    def call_function(self, arg, args, kwargs):
-        lenKw, lenPos = divmod(arg, 256)
+    def call_function(self, oparg, varargs, kwargs):
+        lenKw, lenPos = divmod(oparg, 256)
         namedargs = dict([self.popn(2) for i in range(lenKw)])
         namedargs.update(kwargs)
         posargs = self.popn(lenPos)
-        posargs.extend(args)
+        posargs.extend(varargs)
         func = self.pop()
         self.push(func(*posargs, **namedargs))
 
