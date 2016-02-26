@@ -70,7 +70,7 @@ class Cell:
         self.contents = value
 
 class VirtualMachineError(Exception):
-    """For raising errors in the operation of the VM."""
+    "For raising errors in the operation of the VM."
 
 def vm_exec(code, f_globals, f_locals):
     if f_globals is None: f_globals = builtins.globals()
@@ -96,7 +96,7 @@ class Frame:
 
         self.stack = []
 
-        self.f_lineno = f_code.co_firstlineno
+        self.f_lineno = f_code.co_firstlineno # XXX doesn't get updated
         self.f_lasti = 0
 
         self.cells = {} if f_code.co_cellvars or f_code.co_freevars else None
