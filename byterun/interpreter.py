@@ -115,8 +115,8 @@ class Frame:
             byteName, arguments = self.parse_byte_and_args()
             outcome = self.dispatch(byteName, arguments)
             if outcome:
-                assert outcome[0] == 'return'
-                return outcome[1]
+                assert outcome == 'return'
+                return self.pop()
 
     def parse_byte_and_args(self):
         code = self.f_code
@@ -340,8 +340,7 @@ class Frame:
         name = self.pop()
         code = self.pop()
         defaults = self.popn(argc)
-        globs = self.f_globals
-        self.push(Function(name, code, globs, defaults, None))
+        self.push(Function(name, code, self.f_globals, defaults, None))
 
     def byte_LOAD_CLOSURE(self, name):
         self.push(self.cells[name])
@@ -378,7 +377,7 @@ class Frame:
         self.push(func(*posargs, **namedargs))
 
     def byte_RETURN_VALUE(self):
-        return 'return', self.pop()
+        return 'return'
 
     def byte_IMPORT_NAME(self, name):
         level, fromlist = self.popn(2)
