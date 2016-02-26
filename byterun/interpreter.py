@@ -10,19 +10,20 @@ def make_cell(value):
 
 class Function:
     __slots__ = [
-        'func_code', 'func_name', 'func_defaults', 'func_globals',
-        'func_dict', 'func_closure',
+        'func_name', 'func_code', 'func_globals', 'func_defaults',
+        'func_closure',
         '__name__', '__dict__', '__doc__',
         '_func',
     ]
 
     def __init__(self, name, code, globs, defaults, closure):
-        self.func_code = code
         self.func_name = self.__name__ = name or code.co_name
-        self.func_defaults = tuple(defaults)
+        self.func_code = code
         self.func_globals = globs
-        self.__dict__ = {}
+        self.func_defaults = tuple(defaults)
         self.func_closure = closure
+
+        self.__dict__ = {}
         self.__doc__ = code.co_consts[0] if code.co_consts else None
 
         kw = {'argdefs': self.func_defaults}
