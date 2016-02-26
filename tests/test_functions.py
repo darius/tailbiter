@@ -2,10 +2,6 @@
 
 from __future__ import print_function
 from . import vmtest
-import six
-
-PY3 = six.PY3
-
 
 class TestFunctions(vmtest.VmTestCase):
     def XXX_test_functions(self):
