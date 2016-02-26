@@ -111,8 +111,8 @@ class Frame:
 
     def run(self):
         while True:
-            byteName, arguments = self.parse_byte_and_args()
-            outcome = self.dispatch(byteName, arguments)
+            byte_name, arguments = self.parse_byte_and_args()
+            outcome = self.dispatch(byte_name, arguments)
             if outcome:
                 assert outcome == 'return'
                 return self.pop()
@@ -122,34 +122,34 @@ class Frame:
         opcode = code.co_code[self.f_lasti]
         self.f_lasti = self.f_lasti + 1
         if opcode >= dis.HAVE_ARGUMENT:
-            intArg = (code.co_code[self.f_lasti]
-                      + (code.co_code[self.f_lasti+1] << 8))
+            int_arg = (   code.co_code[self.f_lasti]
+                       + (code.co_code[self.f_lasti+1] << 8))
             self.f_lasti = self.f_lasti + 2
             if opcode in dis.hasconst:
-                arg = code.co_consts[intArg]
+                arg = code.co_consts[int_arg]
             elif opcode in dis.hasfree:
-                if intArg < len(code.co_cellvars):
-                    arg = code.co_cellvars[intArg]
+                if int_arg < len(code.co_cellvars):
+                    arg = code.co_cellvars[int_arg]
                 else:
-                    arg = code.co_freevars[intArg - len(code.co_cellvars)]
+                    arg = code.co_freevars[int_arg - len(code.co_cellvars)]
             elif opcode in dis.hasname:
-                arg = code.co_names[intArg]
+                arg = code.co_names[int_arg]
             elif opcode in dis.haslocal:
-                arg = code.co_varnames[intArg]
+                arg = code.co_varnames[int_arg]
             elif opcode in dis.hasjrel:
-                arg = self.f_lasti + intArg
+                arg = self.f_lasti + int_arg
             else:
-                arg = intArg
+                arg = int_arg
             return dis.opname[opcode], (arg,)
         return dis.opname[opcode], ()
 
-    def dispatch(self, byteName, arguments):
-        if byteName.startswith('UNARY_'):
-            self.unaryOperator(byteName.replace('UNARY_', '', 1))
-        elif byteName.startswith('BINARY_'):
-            self.binaryOperator(byteName.replace('BINARY_', '', 1))
+    def dispatch(self, byte_name, arguments):
+        if byte_name.startswith('UNARY_'):
+            self.unary_operator(byte_name.replace('UNARY_', '', 1))
+        elif byte_name.startswith('BINARY_'):
+            self.binary_operator(byte_name.replace('BINARY_', '', 1))
         else:
-            return getattr(self, 'byte_%s' % byteName)(*arguments)
+            return getattr(self, 'byte_%s' % byte_name)(*arguments)
 
     def top(self):
         return self.stack[-1]
@@ -213,7 +213,7 @@ class Frame:
         'NEGATIVE': operator.neg,   'INVERT': operator.invert,
     }
 
-    def unaryOperator(self, op):
+    def unary_operator(self, op):
         x = self.pop()
         self.push(self.UNARY_OPERATORS[op](x))
 
@@ -227,7 +227,7 @@ class Frame:
         'SUBSCR':   operator.getitem,
     }
 
-    def binaryOperator(self, op):
+    def binary_operator(self, op):
         x, y = self.popn(2)
         self.push(self.BINARY_OPERATORS[op](x, y))
 
@@ -367,10 +367,10 @@ class Frame:
         return self.call_function(arg, varargs, kwargs)
 
     def call_function(self, oparg, varargs, kwargs):
-        lenKw, lenPos = divmod(oparg, 256)
-        namedargs = dict([self.popn(2) for i in range(lenKw)])
+        len_kw, len_pos = divmod(oparg, 256)
+        namedargs = dict([self.popn(2) for i in range(len_kw)])
         namedargs.update(kwargs)
-        posargs = self.popn(lenPos)
+        posargs = self.popn(len_pos)
         posargs.extend(varargs)
         func = self.pop()
         self.push(func(*posargs, **namedargs))
