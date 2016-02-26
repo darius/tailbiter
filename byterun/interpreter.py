@@ -46,22 +46,16 @@ class Function:
 
 class Method:
     def __init__(self, obj, _class, func):
-        self.im_self = obj
-        self.im_class = _class
-        self.im_func = func
+        self.__self__ = obj
+        self._class = _class
+        self.__func__ = func
 
     def __repr__(self):         # pragma: no cover
-        name = "%s.%s" % (self.im_class.__name__, self.im_func.__name__)
-        return '<Bound Method %s of %s>' % (name, self.im_self)
+        name = "%s.%s" % (self._class.__name__, self.__func__.__name__)
+        return '<bound method %s of %s>' % (name, self.__self__)
 
     def __call__(self, *args, **kwargs):
-        if not isinstance(self.im_self, self.im_class):
-            raise TypeError('unbound method %s() must be called with %s instance'
-                            ' as first argument (got %s instance instead)'
-                            % (self.im_func.__name__,
-                               self.im_class.__name__,
-                               type(self.im_self).__name__))
-        return self.im_func(self.im_self, *args, **kwargs)
+        return self.__func__(self.__self__, *args, **kwargs)
 
 class Cell:
     def __init__(self, value):
