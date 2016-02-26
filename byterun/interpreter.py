@@ -57,12 +57,11 @@ class Method:
 
     def __call__(self, *args, **kwargs):
         if not isinstance(self.im_self, self.im_class):
-            raise TypeError(
-                'unbound method %s() must be called with %s instance '
-                'as first argument (got %s instance instead)'
-                % (self.im_func.func_name,
-                   self.im_class.__name__,
-                   type(self.im_self).__name__))
+            raise TypeError('unbound method %s() must be called with %s instance'
+                            ' as first argument (got %s instance instead)'
+                            % (self.im_func.func_name,
+                               self.im_class.__name__,
+                               type(self.im_self).__name__))
         return self.im_func(self.im_self, *args, **kwargs)
 
 class Cell:
