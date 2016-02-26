@@ -80,10 +80,7 @@ def vm_exec(code, f_globals, f_locals):
     return run_frame(code, None, f_globals, f_locals)
 
 def run_frame(code, f_closure, f_globals, f_locals):
-    frame = Frame(code, f_closure, f_globals, f_locals)
-    outcome = frame.run()
-    assert outcome[0] == 'return'
-    return outcome[1]
+    return Frame(code, f_closure, f_globals, f_locals).run()
 
 class Frame:
     def __init__(self, f_code, f_closure, f_globals, f_locals):
@@ -118,7 +115,8 @@ class Frame:
             byteName, arguments = self.parse_byte_and_args()
             outcome = self.dispatch(byteName, arguments)
             if outcome:
-                return outcome
+                assert outcome[0] == 'return'
+                return outcome[1]
 
     def parse_byte_and_args(self):
         code = self.f_code
