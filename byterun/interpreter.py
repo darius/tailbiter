@@ -10,40 +10,39 @@ def make_cell(value):
 
 class Function:
     __slots__ = [
-        'func_name', 'func_code', 'func_globals', 'func_defaults',
-        'func_closure',
-        '__name__', '__dict__', '__doc__',
+        '__name__', '__code__', '__globals__', '__defaults__', '__closure__',
+        '__dict__', '__doc__',
         '_func',
     ]
 
     def __init__(self, name, code, globs, defaults, closure):
-        self.func_name = self.__name__ = name or code.co_name
-        self.func_code = code
-        self.func_globals = globs
-        self.func_defaults = tuple(defaults)
-        self.func_closure = closure
+        self.__name__ = name or code.co_name
+        self.__code__ = code
+        self.__globals__ = globs
+        self.__defaults__ = tuple(defaults)
+        self.__closure__ = closure
 
         self.__dict__ = {}
         self.__doc__ = code.co_consts[0] if code.co_consts else None
 
         closure_cells = closure and tuple(map(make_cell, closure))
-        self._func = types.FunctionType(code, globs, argdefs=self.func_defaults,
+        self._func = types.FunctionType(code, globs, argdefs=self.__defaults__,
                                         closure=closure_cells)
 
     def __repr__(self):         # pragma: no cover
-        return '<Function %s at 0x%08x>' % (self.func_name, id(self))
+        return '<Function %s at 0x%08x>' % (self.__name__, id(self))
 
     def __get__(self, instance, owner):
         return self if instance is None else Method(instance, owner, self)
 
     def __call__(self, *args, **kwargs):
-        if re.search(r'<(?:listcomp|setcomp|dictcomp|genexpr)>$', self.func_name):
+        if re.search(r'<(?:listcomp|setcomp|dictcomp|genexpr)>$', self.__name__):
             assert len(args) == 1 and not kwargs, "Surprising comprehension!"
             callargs = {".0": args[0]}
         else:
             callargs = inspect.getcallargs(self._func, *args, **kwargs)
-        return run_frame(self.func_code, self.func_closure,
-                         self.func_globals, callargs)
+        return run_frame(self.__code__, self.__closure__,
+                         self.__globals__, callargs)
 
 class Method:
     def __init__(self, obj, _class, func):
@@ -52,14 +51,14 @@ class Method:
         self.im_func = func
 
     def __repr__(self):         # pragma: no cover
-        name = "%s.%s" % (self.im_class.__name__, self.im_func.func_name)
+        name = "%s.%s" % (self.im_class.__name__, self.im_func.__name__)
         return '<Bound Method %s of %s>' % (name, self.im_self)
 
     def __call__(self, *args, **kwargs):
         if not isinstance(self.im_self, self.im_class):
             raise TypeError('unbound method %s() must be called with %s instance'
                             ' as first argument (got %s instance instead)'
-                            % (self.im_func.func_name,
+                            % (self.im_func.__name__,
                                self.im_class.__name__,
                                type(self.im_self).__name__))
         return self.im_func(self.im_self, *args, **kwargs)
@@ -404,8 +403,8 @@ def build_class(func, name, *bases, **kwds):
     prepare = getattr(metaclass, '__prepare__', void)
     namespace = {} if prepare is void else prepare(name, bases, **kwds)
 
-    cell = run_frame(func.func_code, func.func_closure,
-                     func.func_globals, namespace)
+    cell = run_frame(func.__code__, func.__closure__,
+                     func.__globals__, namespace)
 
     cls = metaclass(name, bases, namespace)
     if isinstance(cell, Cell):
