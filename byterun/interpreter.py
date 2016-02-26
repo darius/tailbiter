@@ -26,10 +26,9 @@ class Function:
         self.__dict__ = {}
         self.__doc__ = code.co_consts[0] if code.co_consts else None
 
-        kw = {'argdefs': self.func_defaults}
-        if closure:
-            kw['closure'] = tuple([make_cell(0) for _ in closure])
-        self._func = types.FunctionType(code, globs, **kw)
+        closure_cells = closure and tuple(map(make_cell, closure))
+        self._func = types.FunctionType(code, globs, argdefs=self.func_defaults,
+                                        closure=closure_cells)
 
     def __repr__(self):         # pragma: no cover
         return '<Function %s at 0x%08x>' % (self.func_name, id(self))
