@@ -13,11 +13,10 @@ class Function:
         'func_code', 'func_name', 'func_defaults', 'func_globals',
         'func_dict', 'func_closure',
         '__name__', '__dict__', '__doc__',
-        '_vm', '_func',
+        '_func',
     ]
 
-    def __init__(self, name, code, globs, defaults, closure, vm):
-        self._vm = vm
+    def __init__(self, name, code, globs, defaults, closure):
         self.func_code = code
         self.func_name = self.__name__ = name or code.co_name
         self.func_defaults = tuple(defaults)
@@ -43,8 +42,8 @@ class Function:
             callargs = {".0": args[0]}
         else:
             callargs = inspect.getcallargs(self._func, *args, **kwargs)
-        return self._vm.run_frame(self.func_code, self.func_closure,
-                                  self.func_globals, callargs)
+        return run_frame(self.func_code, self.func_closure,
+                         self.func_globals, callargs)
 
 class Method:
     def __init__(self, obj, _class, func):
@@ -73,28 +72,21 @@ class Cell:
 class VirtualMachineError(Exception):
     """For raising errors in the operation of the VM."""
 
-class VirtualMachine:
-    def __init__(self):
-        self.frames = []
+def vm_exec(code, f_globals, f_locals):
+    if f_globals is None: f_globals = builtins.globals()
+    if f_locals is None:  f_locals = f_globals
+    if '__builtins__' not in f_globals:
+        f_globals['__builtins__'] = builtins.__dict__
+    return run_frame(code, None, f_globals, f_locals)
 
-    def exec(self, code, f_globals, f_locals):
-        if f_globals is None: f_globals = builtins.globals()
-        if f_locals is None:  f_locals = f_globals
-        if '__builtins__' not in f_globals:
-            f_globals['__builtins__'] = builtins.__dict__
-        return self.run_frame(code, None, f_globals, f_locals)
-
-    def run_frame(self, code, f_closure, f_globals, f_locals):
-        frame = Frame(self, code, f_closure, f_globals, f_locals)
-        self.frames.append(frame)
-        outcome = frame.run()
-        self.frames.pop()
-        assert outcome[0] == 'return'
-        return outcome[1]
+def run_frame(code, f_closure, f_globals, f_locals):
+    frame = Frame(code, f_closure, f_globals, f_locals)
+    outcome = frame.run()
+    assert outcome[0] == 'return'
+    return outcome[1]
 
 class Frame:
-    def __init__(self, vm, f_code, f_closure, f_globals, f_locals):
-        self.vm = vm
+    def __init__(self, f_code, f_closure, f_globals, f_locals):
         self.f_code = f_code
         self.f_globals = f_globals
         self.f_locals = f_locals
@@ -351,7 +343,7 @@ class Frame:
         code = self.pop()
         defaults = self.popn(argc)
         globs = self.f_globals
-        self.push(Function(name, code, globs, defaults, None, self.vm))
+        self.push(Function(name, code, globs, defaults, None))
 
     def byte_LOAD_CLOSURE(self, name):
         self.push(self.cells[name])
@@ -361,7 +353,7 @@ class Frame:
         closure, code = self.popn(2)
         defaults = self.popn(argc)
         globs = self.f_globals
-        self.push(Function(name, code, globs, defaults, closure, self.vm))
+        self.push(Function(name, code, globs, defaults, closure))
 
     def byte_CALL_FUNCTION(self, arg):
         return self.call_function(arg, [], {})
@@ -416,8 +408,8 @@ def build_class(func, name, *bases, **kwds):
     prepare = getattr(metaclass, '__prepare__', void)
     namespace = {} if prepare is void else prepare(name, bases, **kwds)
 
-    cell = func._vm.run_frame(func.func_code, func.func_closure,
-                              func.func_globals, namespace)
+    cell = run_frame(func.func_code, func.func_closure,
+                     func.func_globals, namespace)
 
     cls = metaclass(name, bases, namespace)
     if isinstance(cell, Cell):

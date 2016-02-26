@@ -11,7 +11,7 @@ import unittest
 
 import six
 
-from byterun.interpreter import VirtualMachine, VirtualMachineError
+from byterun.interpreter import vm_exec, VirtualMachineError
 import compiler
 
 # Make this false if you need to run the debugger inside a test.
@@ -45,7 +45,7 @@ class VmTestCase(unittest.TestCase):
         if 0: dis_code(ref_code)
 
         # Run the code through our VM and the real Python interpreter, for comparison.
-        vm_value, vm_exc, vm_stdout = self.run_in_vm(VirtualMachine(), ref_code)
+        vm_value, vm_exc, vm_stdout = self.run_in_vm(ref_code)
         py_value, py_exc, py_stdout = self.run_in_real_python(ref_code)
 
         self.assert_same_exception(vm_exc, py_exc)
@@ -61,7 +61,7 @@ class VmTestCase(unittest.TestCase):
 
         if 0: dis_code(tb_code)
 
-        tb_value, tb_exc, tb_stdout = self.run_in_vm(VirtualMachine(), tb_code)
+        tb_value, tb_exc, tb_stdout = self.run_in_vm(tb_code)
 
         self.assert_same_exception(tb_exc, py_exc)
         self.assertEqual(tb_stdout.getvalue(), py_stdout.getvalue())
@@ -72,10 +72,9 @@ class VmTestCase(unittest.TestCase):
             self.assertIsNone(tb_exc)
 
         # And the same again but with the compiler also running in the vm.
-        vm = VirtualMachine()
-        both_code = self.run_compiler_in_vm(vm, source_code)
+        both_code = self.run_compiler_in_vm(source_code)
         
-        both_value, both_exc, both_stdout = self.run_in_vm(vm, ref_code)
+        both_value, both_exc, both_stdout = self.run_in_vm(ref_code)
 
         self.assert_same_exception(both_exc, py_exc)
         self.assertEqual(both_stdout.getvalue(), py_stdout.getvalue())
@@ -85,7 +84,7 @@ class VmTestCase(unittest.TestCase):
         else:
             self.assertIsNone(both_exc)
 
-    def run_compiler_in_vm(self, vm, source_code):
+    def run_compiler_in_vm(self, source_code):
         "Run tailbiter on vm, compiling source_code."
         source_code = textwrap.dedent(source_code)
         source_ast = ast.parse(source_code)
@@ -95,15 +94,10 @@ class VmTestCase(unittest.TestCase):
         #    with the resulting code run in vm.
         compiler_code = self.get_compiler_code()
         compiler2 = types.ModuleType('compiler2')
-        setattr(compiler2, '__builtins__', __builtins__) # XXX move to a vm.exec() method or something
-        assert not vm.frames
-        vm.exec(compiler_code, compiler2.__dict__, compiler2.__dict__)
+        vm_exec(compiler_code, compiler2.__dict__, None)
 
         # 2. Compile source_code by running compiler2 in the vm.
-        assert not vm.frames
-        tb_code = compiler2.code_for_module(module_name, filename, source_ast)
-        assert not vm.frames  # (i.e. the implicit running in vm should exit cleanly)
-        return tb_code
+        return compiler2.code_for_module(module_name, filename, source_ast)
 
     def get_compiler_code(self):
         if not hasattr(self, 'compiler_code'):
@@ -115,7 +109,7 @@ class VmTestCase(unittest.TestCase):
                                                           compiler_ast)
         return self.compiler_code
 
-    def run_in_vm(self, vm, code):
+    def run_in_vm(self, code):
         real_stdout = sys.stdout
 
         # Run the code through our VM.
@@ -126,7 +120,7 @@ class VmTestCase(unittest.TestCase):
 
         vm_value = vm_exc = None
         try:
-            vm_value = vm.exec(code, None, None)
+            vm_value = vm_exec(code, None, None)
         except VirtualMachineError:         # pragma: no cover
             # If the VM code raises an error, show it.
             raise
