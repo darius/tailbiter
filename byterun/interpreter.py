@@ -30,15 +30,15 @@ class Function:
         argc      = code.co_argcount
         varargs   = 0 != (code.co_flags & 0x04)
         varkws    = 0 != (code.co_flags & 0x08)
-        params    = code.co_varnames[:argc+varargs+varkws] # XXX slice
+        params    = code.co_varnames[slice(0, argc+varargs+varkws)]
 
         defaults  = self.__defaults__
         nrequired = -len(defaults) if defaults else argc
 
-        f_locals = dict(zip(params[nrequired:], defaults)) # slice
+        f_locals = dict(zip(params[slice(nrequired, None)], defaults))
         f_locals.update(dict(zip(params, args)))
         if varargs:
-            f_locals[params[argc]] = args[argc:] # slice
+            f_locals[params[argc]] = args[slice(argc, None)]
         elif argc < len(args):
             raise TypeError("%s() takes up to %d positional argument(s) but got %d"
                             % (self.__name__, argc, len(args)))
@@ -52,7 +52,7 @@ class Function:
             else:
                 raise TypeError("%s() got an unexpected keyword argument %r"
                                 % (self.__name__, kw))
-        missing = [v for v in params[:nrequired] if v not in f_locals] # slice
+        missing = [v for v in params[slice(0, nrequired)] if v not in f_locals]
         if missing:
             raise TypeError("%s() missing %d required positional argument%s: %s"
                             % (code.co_name, #self.__name__,
