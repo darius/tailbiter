@@ -5,7 +5,7 @@ import os
 import sys
 import tokenize
 
-from .interpreter import VirtualMachine
+from .interpreter import vm_exec
 
 
 # This code is ripped off from coverage.py.  Define things it expects.
@@ -20,8 +20,7 @@ NoSource = Exception
 
 
 def exec_code_object(code, env):
-    vm = VirtualMachine()
-    vm.run_code(code, env, env)
+    vm_exec(code, env, env)
 
 
 # from coverage.py:
