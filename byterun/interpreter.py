@@ -2,17 +2,12 @@
 # Derived from Byterun by Ned Batchelder, based on pyvm2 by Paul
 # Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
 
-import builtins, dis, inspect, operator, re, types
-
-def make_cell(value):
-    fn = (lambda x: lambda: x)(value)
-    return fn.__closure__[0]
+import builtins, dis, operator, types
 
 class Function:
     __slots__ = [
         '__name__', '__code__', '__globals__', '__defaults__', '__closure__',
         '__dict__', '__doc__',
-        '_func',
     ]
 
     def __init__(self, name, code, globs, defaults, closure):
@@ -21,13 +16,8 @@ class Function:
         self.__globals__ = globs
         self.__defaults__ = tuple(defaults)
         self.__closure__ = closure
-
         self.__dict__ = {}
         self.__doc__ = code.co_consts[0] if code.co_consts else None
-
-        closure_cells = closure and tuple(map(make_cell, closure))
-        self._func = types.FunctionType(code, globs, argdefs=self.__defaults__,
-                                        closure=closure_cells)
 
     def __repr__(self):         # pragma: no cover
         return '<Function %s at 0x%08x>' % (self.__name__, id(self))
@@ -36,13 +26,40 @@ class Function:
         return self if instance is None else Method(instance, owner, self)
 
     def __call__(self, *args, **kwargs):
-        if re.search(r'<(?:listcomp|setcomp|dictcomp|genexpr)>$', self.__name__):
-            assert len(args) == 1 and not kwargs, "Surprising comprehension!"
-            callargs = {".0": args[0]}
-        else:
-            callargs = inspect.getcallargs(self._func, *args, **kwargs)
-        return run_frame(self.__code__, self.__closure__,
-                         self.__globals__, callargs)
+        code      = self.__code__
+        argc      = code.co_argcount
+        varargs   = 0 != (code.co_flags & 0x04)
+        varkws    = 0 != (code.co_flags & 0x08)
+        params    = code.co_varnames[:argc+varargs+varkws] # XXX slice
+
+        defaults  = self.__defaults__
+        nrequired = -len(defaults) if defaults else argc
+
+        f_locals = dict(zip(params[nrequired:], defaults)) # slice
+        f_locals.update(dict(zip(params, args)))
+        if varargs:
+            f_locals[params[argc]] = args[argc:] # slice
+        elif argc < len(args):
+            raise TypeError("%s() takes up to %d positional argument(s) but got %d"
+                            % (self.__name__, argc, len(args)))
+        if varkws:
+            f_locals[params[-1]] = varkw_dict = {}
+        for kw, value in kwargs.items():
+            if kw in params:
+                f_locals[kw] = value
+            elif varkws:
+                varkw_dict[kw] = value
+            else:
+                raise TypeError("%s() got an unexpected keyword argument %r"
+                                % (self.__name__, kw))
+        missing = [v for v in params[:nrequired] if v not in f_locals] # slice
+        if missing:
+            raise TypeError("%s() missing %d required positional argument%s: %s"
+                            % (code.co_name, #self.__name__,
+                               len(missing), 's' if 1 < len(missing) else '',
+                               ', '.join(map(repr, missing))))
+
+        return run_frame(code, self.__closure__, self.__globals__, f_locals)
 
 class Method:
     def __init__(self, obj, _class, func):
