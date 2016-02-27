@@ -9,34 +9,9 @@ from .interpreter import vm_exec
 
 
 # This code is ripped off from coverage.py.  Define things it expects.
-try:
-    open_source = tokenize.open     # pylint: disable=E1101
-except:
-    def open_source(fname):
-        """Open a source file the best way."""
-        return open(fname, "rU")
-
+open_source = tokenize.open
 NoSource = Exception
-
-
-def exec_code_object(code, env):
-    vm_exec(code, env, env)
-
-
-# from coverage.py:
-
-try:
-    # In Py 2.x, the builtins were in __builtin__
-    BUILTINS = sys.modules['__builtin__']
-except KeyError:
-    # In Py 3.x, they're in builtins
-    BUILTINS = sys.modules['builtins']
-
-
-def rsplit1(s, sep):
-    """The same as s.rsplit(sep, 1), but works in 2.3"""
-    parts = s.split(sep)
-    return sep.join(parts[:-1]), parts[-1]
+BUILTINS = sys.modules['builtins']
 
 
 def run_python_module(modulename, args):
@@ -54,7 +29,7 @@ def run_python_module(modulename, args):
             # Search for the module - inside its parent package, if any - using
             # standard import mechanics.
             if '.' in modulename:
-                packagename, name = rsplit1(modulename, '.')
+                packagename, name = modulename.rsplit('.', 1)
                 package = __import__(packagename, glo, loc, ['__path__'])
                 searchpath = package.__path__
             else:
@@ -134,7 +109,7 @@ def run_python_file(filename, args, package=None):
         code = compile(source, filename, "exec")
 
         # Execute the source file.
-        exec_code_object(code, main_mod.__dict__)
+        vm_exec(code, main_mod.__dict__, None)
     finally:
         # Restore the old __main__
         sys.modules['__main__'] = old_main_mod
