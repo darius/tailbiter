@@ -1,5 +1,6 @@
 """Execute files of Python code."""
 
+import builtins
 import imp
 import os
 import sys
@@ -11,8 +12,6 @@ from .interpreter import vm_exec
 # This code is ripped off from coverage.py.  Define things it expects.
 open_source = tokenize.open
 NoSource = Exception
-BUILTINS = sys.modules['builtins']
-
 
 def run_python_module(modulename, args):
     """Run a python module, as though with ``python -m name args...``.
@@ -72,6 +71,13 @@ def run_python_file(filename, args, package=None):
     enclosing package, if any.
 
     """
+    try:
+        source_file = open_source(filename)
+    except IOError:
+        raise NoSource("No file to run: %r" % filename)
+    with source_file:
+        source = source_file.read()
+
     # Create a module to serve as __main__
     old_main_mod = sys.modules['__main__']
     main_mod = imp.new_module('__main__')
@@ -79,7 +85,7 @@ def run_python_file(filename, args, package=None):
     main_mod.__file__ = filename
     if package:
         main_mod.__package__ = package
-    main_mod.__builtins__ = BUILTINS
+    main_mod.__builtins__ = builtins
 
     # Set sys.argv and the first path element properly.
     old_argv = sys.argv
@@ -91,24 +97,7 @@ def run_python_file(filename, args, package=None):
         sys.path[0] = os.path.abspath(os.path.dirname(filename))
 
     try:
-        # Open the source file.
-        try:
-            source_file = open_source(filename)
-        except IOError:
-            raise NoSource("No file to run: %r" % filename)
-
-        try:
-            source = source_file.read()
-        finally:
-            source_file.close()
-
-        # We have the source.  `compile` still needs the last line to be clean,
-        # so make sure it is, then compile a code object from it.
-        if not source or source[-1] != '\n':
-            source += '\n'
         code = compile(source, filename, "exec")
-
-        # Execute the source file.
         vm_exec(code, main_mod.__dict__, None)
     finally:
         # Restore the old __main__
