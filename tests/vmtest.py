@@ -83,22 +83,22 @@ class VmTestCase(unittest.TestCase):
 
         # 1. Make a compiler2 module, which is compiler compiled by itself
         #    with the resulting code run in vm.
-        compiler_code = self.get_compiler_code()
-        compiler2 = types.ModuleType('compiler2')
-        run(compiler_code, compiler2.__dict__, None)
+        compiler2 = self.get_meta_compiler()
 
         # 2. Compile source_code by running compiler2 in the vm.
         return compiler2.code_for_module(module_name, filename, source_ast)
 
-    def get_compiler_code(self):
-        if not hasattr(VmTestCase, 'compiler_code'):
+    def get_meta_compiler(self):
+        if not hasattr(VmTestCase, 'meta_compiler'):
             with open('compiler.py') as f: # XXX needs the right pwd
                 compiler_source = f.read()
             compiler_ast = ast.parse(compiler_source)
-            VmTestCase.compiler_code = compiler.code_for_module('compiler',
-                                                                'compiler.py',
-                                                                compiler_ast)
-        return VmTestCase.compiler_code
+            compiler_code = compiler.code_for_module('compiler',
+                                                     'compiler.py',
+                                                     compiler_ast)
+            VmTestCase.meta_compiler = types.ModuleType('compiler2')
+            run(compiler_code, VmTestCase.meta_compiler.__dict__, None)
+        return VmTestCase.meta_compiler
 
     def run_in_vm(self, code):
         real_stdout = sys.stdout
