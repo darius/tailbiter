@@ -2,7 +2,7 @@
 
 import ast, dis, io, sys, textwrap, types, unittest
 
-from byterun.interpreter import vm_exec, VirtualMachineError
+from byterun.interpreter import run, VirtualMachineError
 import compiler
 
 # Make this false if you need to run the debugger inside a test.
@@ -85,7 +85,7 @@ class VmTestCase(unittest.TestCase):
         #    with the resulting code run in vm.
         compiler_code = self.get_compiler_code()
         compiler2 = types.ModuleType('compiler2')
-        vm_exec(compiler_code, compiler2.__dict__, None)
+        run(compiler_code, compiler2.__dict__, None)
 
         # 2. Compile source_code by running compiler2 in the vm.
         return compiler2.code_for_module(module_name, filename, source_ast)
@@ -111,7 +111,7 @@ class VmTestCase(unittest.TestCase):
 
         vm_value = vm_exc = None
         try:
-            vm_value = vm_exec(code, None, None)
+            vm_value = run(code, None, None)
         except VirtualMachineError:         # pragma: no cover
             # If the VM code raises an error, show it.
             raise

@@ -81,7 +81,7 @@ class Cell:
 class VirtualMachineError(Exception):
     "For raising errors in the operation of the VM."
 
-def vm_exec(code, f_globals, f_locals):
+def run(code, f_globals, f_locals):
     if f_globals is None: f_globals = builtins.globals()
     if f_locals is None:  f_locals = f_globals
     if '__builtins__' not in f_globals:

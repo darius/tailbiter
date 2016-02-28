@@ -6,7 +6,7 @@ import os
 import sys
 import tokenize
 
-from .interpreter import vm_exec
+from .interpreter import run
 
 
 # This code is ripped off from coverage.py.  Define things it expects.
@@ -98,7 +98,7 @@ def run_python_file(filename, args, package=None):
 
     try:
         code = compile(source, filename, "exec")
-        vm_exec(code, main_mod.__dict__, None)
+        run(code, main_mod.__dict__, None)
     finally:
         # Restore the old __main__
         sys.modules['__main__'] = old_main_mod

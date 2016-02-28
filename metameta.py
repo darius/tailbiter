@@ -24,7 +24,7 @@ class Loader:
     def module_from_ast(self, module_name, filename, t):
         code = self.compiler.code_for_module(module_name, filename, t)
         module = types.ModuleType(module_name, ast.get_docstring(t))
-        self.interpreter.vm_exec(code, module.__dict__, None)
+        self.interpreter.run(code, module.__dict__, None)
         return module
 
 base_loader = Loader(compiler, byterun.interpreter)
