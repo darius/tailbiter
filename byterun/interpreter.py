@@ -55,7 +55,7 @@ class Function:
         missing = [v for v in params[slice(0, nrequired)] if v not in f_locals]
         if missing:
             raise TypeError("%s() missing %d required positional argument%s: %s"
-                            % (code.co_name, #self.__name__,
+                            % (code.co_name,
                                len(missing), 's' if 1 < len(missing) else '',
                                ', '.join(map(repr, missing))))
 
