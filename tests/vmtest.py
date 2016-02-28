@@ -91,14 +91,14 @@ class VmTestCase(unittest.TestCase):
         return compiler2.code_for_module(module_name, filename, source_ast)
 
     def get_compiler_code(self):
-        if not hasattr(self, 'compiler_code'):
+        if not hasattr(VmTestCase, 'compiler_code'):
             with open('compiler.py') as f: # XXX needs the right pwd
                 compiler_source = f.read()
             compiler_ast = ast.parse(compiler_source)
-            self.compiler_code = compiler.code_for_module('compiler',
-                                                          'compiler.py',
-                                                          compiler_ast)
-        return self.compiler_code
+            VmTestCase.compiler_code = compiler.code_for_module('compiler',
+                                                                'compiler.py',
+                                                                compiler_ast)
+        return VmTestCase.compiler_code
 
     def run_in_vm(self, code):
         real_stdout = sys.stdout
