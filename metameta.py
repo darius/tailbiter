@@ -5,6 +5,7 @@ byterun.interpreter.
 
 import ast, sys, types
 import compiler, byterun.interpreter
+#sys.setrecursionlimit(8000)
 
 def read_file(filename):
     f = open(filename)
