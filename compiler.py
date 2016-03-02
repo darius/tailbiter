@@ -383,35 +383,38 @@ def code_for_module(module_name, filename, t):
 def desugar(t):
     return ast.fix_missing_locations(Desugarer().visit(t))
 
+def rewriter(rewrite):
+    def visit(self, t):
+        return ast.copy_location(rewrite(self, self.generic_visit(t)),
+                                 t)
+    return visit
+
 def Call(fn, args):
     return ast.Call(fn, args, [], None, None)
 
 class Desugarer(ast.NodeTransformer):
 
+    @rewriter
     def visit_Assert(self, t):
-        t = self.generic_visit(t)
-        result = ast.If(t.test,
-                        [],
-                        [ast.Raise(Call(ast.Name('AssertionError', load),
-                                        [] if t.msg is None else [t.msg]),
-                                   None)])
-        return ast.copy_location(result, t)
+        return ast.If(t.test,
+                      [],
+                      [ast.Raise(Call(ast.Name('AssertionError', load),
+                                      [] if t.msg is None else [t.msg]),
+                                 None)])
 
+    @rewriter
     def visit_Lambda(self, t):
-        t = self.generic_visit(t)
-        result = Function('<lambda>', t.args, [ast.Return(t.body)])
-        return ast.copy_location(result, t)
+        return Function('<lambda>', t.args, [ast.Return(t.body)])
 
+    @rewriter
     def visit_FunctionDef(self, t):
-        t = self.generic_visit(t)
         fn = Function(t.name, t.args, t.body)
         for d in reversed(t.decorator_list):
             fn = Call(d, [fn])
-        result = ast.Assign([ast.Name(t.name, store)], fn)
-        return ast.copy_location(result, t)
+        return ast.Assign([ast.Name(t.name, store)], fn)
 
+    @rewriter
     def visit_ListComp(self, t):
-        t = self.generic_visit(t)
         result_append = ast.Attribute(ast.Name('.0', load), 'append', load)
         body = ast.Expr(Call(result_append, [t.elt]))
         for loop in reversed(t.generators):
@@ -421,9 +424,8 @@ class Desugarer(ast.NodeTransformer):
         fn = [body,
               ast.Return(ast.Name('.0', load))]
         args = ast.arguments([ast.arg('.0', None)], None, [], None, [], [])
-        result = Call(Function('<listcomp>', args, fn),
-                      [ast.List([], load)])
-        return ast.copy_location(result, t)
+        return Call(Function('<listcomp>', args, fn),
+                    [ast.List([], load)])
 
 class Function(ast.FunctionDef):
     _fields = ('name', 'args', 'body')
