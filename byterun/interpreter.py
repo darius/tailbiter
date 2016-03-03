@@ -389,11 +389,13 @@ class Frame:
         return 'return'
 
     def byte_IMPORT_NAME(self, name):
+        # XXX ceval.c is slightly different: looks up '__import__' in f_builtins first
         level, fromlist = self.popn(2)
         val = __import__(name, self.f_globals, self.f_locals, fromlist, level)
         self.push(val)
 
     def byte_IMPORT_FROM(self, name):
+        # XXX ceval.c is slightly different: turns AttributeError into ImportError
         self.push(getattr(self.top(), name))
 
     def byte_LOAD_BUILD_CLASS(self):
