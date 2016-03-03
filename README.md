@@ -7,11 +7,8 @@ It can optionally run on top of a port of
 original Byterun runs in 2.7 or 3.3.)
 
 I've greatly stripped down and modified the version of byterun in this
-repo, and extended the compiler a bit, towards compiling the
-interpreter.
-
-To do: actually run the compiler-compiled interpreter on the
-interpreter.
+repo, and extended the compiler a bit, to run both together, i.e. the
+compiler-compiled compiler and interpreter on the interpreter.
 
 This is a continuation of
 https://github.com/darius/500lines/tree/master/bytecode-compiler
