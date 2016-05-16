@@ -36,5 +36,5 @@ Vague plan:
   (This'll include deciding on a parsing algorithm! LL(1), PEG,
   derivatives?)
 
-* Make sure all the code here stays within the Tailbiter subset of
+* Make sure all the final code stays within the Tailbiter subset of
   Python, for self-hosting.
