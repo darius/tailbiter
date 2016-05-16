@@ -68,7 +68,8 @@ term: factor (('*'|'/'|'%'|'//') factor)*
 factor: ('+'|'-'|'~') factor | power
 power: atom trailer* ['**' factor]
 
-atom: ('[' [testlist_comp] ']' |
+atom: ('(' [test] ')' |
+       '[' [testlist_comp] ']' |
        NAME | NUMBER | STRING+ | 'None' | 'True' | 'False')
 
 trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
