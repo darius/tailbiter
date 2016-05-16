@@ -4,10 +4,14 @@
   that go into the Tailbiter subset of Python (untested, probably a
   bit wrong).
 
-* metagrammar.py: Parses a grammar like `subset`. We don't yet do
-  anything with this, and most likely won't ever; but maybe the way to
-  go for the full Python parser will be to auto-generate it from the
-  grammar, starting with this. In Py2 for now.
+* metagrammar.py: Parses a grammar like `subset`, and turns it into a
+  recognizer. (Mostly; I haven't yet stapled it together with the
+  Python lexer.) We don't yet do anything with this, and most likely
+  won't ever; but maybe the way to go for the full Python parser will
+  be to auto-generate it from the grammar, starting with this. To make
+  that happen I'd have to figure out how to bring in knowledge of the
+  AST types and how they're related to the concrete syntax. In Py2 for
+  now.
 
 * parson3.py: Port of the core of the Parson parsing library to Py3.
 
