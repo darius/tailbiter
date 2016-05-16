@@ -23,8 +23,8 @@ def invert(p):
                 lambda s, far, st: [] if p.run(s, [0], st) else [st])
 
 def Pex(x):
-    if isinstance(x, _Pex):
-        return x
+    if isinstance(x, _Pex): return x
+    if callable(x):         return feed(x)
     assert False
 
 class _Pex:
@@ -47,6 +47,8 @@ class _Pex:
     def __radd__(self, other): return chain(Pex(other), self)
     def __or__(self, other):   return either(self, Pex(other))
     def __ror__(self, other):  return either(Pex(other), self)
+    def __rshift__(self, fn):  return label(seclude(chain(self, Pex(fn))),
+                                            '(%r>>%s)', self, _fn_name(fn))
     __invert__ = invert
     maybe = maybe
     plus = plus
@@ -75,7 +77,7 @@ def recur(fn):
     return p
 
 def _fn_name(fn):
-    return fn.func_name if hasattr(fn, 'func_name') else repr(fn)
+    return fn.__name__ if hasattr(fn, '__name__') else repr(fn)
 
 def delay(thunk, *face):        # XXX document face
     """Precondition: thunk() will return a pex p. We immediately
@@ -93,6 +95,15 @@ def delay(thunk, *face):        # XXX document face
 fail  = _Pex('fail', lambda s, far, st: [])
 empty = label(~fail, 'empty')
              
+def seclude(p):
+    """Return a peg like p, but where p doesn't get to see or alter
+    the incoming values tuple."""
+    def run(s, far, state):
+        i, vals = state
+        return [(i2, vals + vals2)
+                for i2, vals2 in p.run(s, far, (i, ()))]
+    return _Pex(('[%r]', p), run)
+
 def either(p, q):
     """Return a pex that succeeds just when one of p or q does, trying
     them in that order."""
@@ -108,3 +119,17 @@ def chain(p, q):
                     [st3 
                      for st2 in p.run(s, far, st)
                      for st3 in q.run(s, far, st2)])
+
+def alter(fn):                  # XXX better name
+    """Return a peg that always succeeds, changing the values tuple
+    from xs to fn(*xs)."""
+    def run(s, far, state):
+        i, vals = state
+        return [(i, fn(*vals))]  # XXX check that result is tuple?
+    return _Pex(('alter(%s)', _fn_name(fn)), run)
+
+def feed(fn):
+    """Return a peg that always succeeds, changing the values tuple
+    from xs to (fn(*xs),). (We're feeding fn with the values.)"""
+    return label(alter(lambda *vals: (fn(*vals),)),
+                 ':%s', _fn_name(fn))

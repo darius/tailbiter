@@ -48,13 +48,20 @@ class Tok(P._Pex):
     def run(self, s, far, state):
         i, vals = state
         token = s[i]
-        print('a', token.type, self.kind)
-        skim_token(token)
+        if 0:
+            print('a', token.type, self.kind)
+            skim_token(token)
         if token.type != self.kind: return []
-        print('b')
-        if self.expected is not None and token.string != self.expected: return []
-        print('c')
-        return [(i+1, vals)]
+        if self.expected is None:
+            vals += (token.string,)
+        else:
+            if token.string != self.expected: return []
+        return [(_step(far, i+1), vals)]
+
+def _step(far, i):
+    "Update far with a new position."
+    far[0] = max(far[0], i)
+    return i
 
 NUMBER = Tok(T.NUMBER)
 STRING = Tok(T.STRING)
@@ -64,7 +71,7 @@ OP     = lambda s: Tok(T.OP, s)
 atom =   P.delay(lambda:
             OP('(') + test + OP(')')
           | NUMBER
-          | STRING.plus()
+          | (STRING.plus() >> (lambda *strings: ''.join(strings))) # XXX wrong semantics
           | Tok(T.NAME, 'None')
           | Tok(T.NAME, 'True')
           | Tok(T.NAME, 'False')
