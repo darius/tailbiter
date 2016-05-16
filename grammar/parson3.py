@@ -1,5 +1,5 @@
 """
-Basically a port of the cored of Parson to py3
+A port of the core of Parson to py3
 """
 
 def maybe(p):
