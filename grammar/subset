@@ -23,7 +23,7 @@ classdef: 'class' NAME ['(' [arglist] ')'] ':' suite
 arglist: (argument ',')* (argument [',']
                          |'*' test (',' argument)* [',' '**' test] 
                          |'**' test)
-argument: test [comp_for] | test '=' test
+argument: test ['=' test]
 
 simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
 small_stmt: expr_stmt | flow_stmt | import_stmt | assert_stmt
