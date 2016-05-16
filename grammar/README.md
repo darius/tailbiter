@@ -33,3 +33,5 @@ Vague plan:
   parser. (https://github.com/hausdorff/pow likely to help a lot.)
 
 * Sketch ways to scale this up to the full grammar, and pick one.
+  (This'll include deciding on a parsing algorithm! LL(1), PEG,
+  derivatives?)
