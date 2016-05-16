@@ -8,7 +8,7 @@ def maybe(p):
                  '(%r)?', p)
 
 def plus(p):
-    "Return a peg matching 1 or more of what p matches."
+    "Return a pex matching 1 or more of what p matches."
     return label(chain(p, star(p)),
                  '(%r)+', p)
 
@@ -96,7 +96,7 @@ fail  = _Pex('fail', lambda s, far, st: [])
 empty = label(~fail, 'empty')
              
 def seclude(p):
-    """Return a peg like p, but where p doesn't get to see or alter
+    """Return a pex like p, but where p doesn't get to see or alter
     the incoming values tuple."""
     def run(s, far, state):
         i, vals = state
@@ -121,7 +121,7 @@ def chain(p, q):
                      for st3 in q.run(s, far, st2)])
 
 def alter(fn):                  # XXX better name
-    """Return a peg that always succeeds, changing the values tuple
+    """Return a pex that always succeeds, changing the values tuple
     from xs to fn(*xs)."""
     def run(s, far, state):
         i, vals = state
@@ -129,7 +129,7 @@ def alter(fn):                  # XXX better name
     return _Pex(('alter(%s)', _fn_name(fn)), run)
 
 def feed(fn):
-    """Return a peg that always succeeds, changing the values tuple
+    """Return a pex that always succeeds, changing the values tuple
     from xs to (fn(*xs),). (We're feeding fn with the values.)"""
     return label(alter(lambda *vals: (fn(*vals),)),
                  ':%s', _fn_name(fn))
