@@ -35,3 +35,6 @@ Vague plan:
 * Sketch ways to scale this up to the full grammar, and pick one.
   (This'll include deciding on a parsing algorithm! LL(1), PEG,
   derivatives?)
+
+* Make sure all the code here stays within the Tailbiter subset of
+  Python, for self-hosting.
