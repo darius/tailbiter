@@ -18,28 +18,6 @@ def main(argv):
     print_tokens(tokens)
     parse(tokens)
 
-"""
-arith_expr: term (('+'|'-') term)*
-term: factor (('*'|'/'|'%'|'//') factor)*
-factor: ('+'|'-'|'~') factor | atom
-atom: NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
-
-a * (baloney + -7)
-
-ENCODING utf-8
-NAME a
-OP STAR *
-OP LPAR (
-NAME baloney
-OP PLUS +
-OP MINUS -
-NUMBER 7
-OP RPAR )
-NEWLINE 
-
-ENDMARKER 
-"""
-
 class Tok(P._Pex):
     "Matches a single lexical token of a given kind."
     def __init__(self, kind, literal_string=None):
@@ -62,6 +40,13 @@ def _step(far, i):
     "Update far with a new position."
     far[0] = max(far[0], i)
     return i
+
+"""
+arith_expr: term (('+'|'-') term)*
+term: factor (('*'|'/'|'%'|'//') factor)*
+factor: ('+'|'-'|'~') factor | atom
+atom: NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
+"""
 
 NUMBER = Tok(T.NUMBER)
 STRING = Tok(T.STRING)
