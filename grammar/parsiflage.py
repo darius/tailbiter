@@ -26,9 +26,6 @@ class Tok(P._Pex):
     def run(self, s, far, state):
         i, vals = state
         token = s[i]
-        if 0:
-            print('a', token.type, self.kind)
-            skim_token(token)
         if token.type != self.kind: return []
         if self.expected is None:
             vals += (token.string,)
@@ -42,10 +39,11 @@ def _step(far, i):
     return i
 
 """
+test: arith_expr
 arith_expr: term (('+'|'-') term)*
 term: factor (('*'|'/'|'%'|'//') factor)*
 factor: ('+'|'-'|'~') factor | atom
-atom: NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
+atom: '(' test ')' | NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
 """
 
 NUMBER = Tok(T.NUMBER)
