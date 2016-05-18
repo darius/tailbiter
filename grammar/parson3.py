@@ -43,6 +43,7 @@ class _Pex:
         for _, vals in self.run(sequence, far, (0, ())):
             return vals
         raise Unparsable(self, sequence[:far[0]], sequence[far[0]:])
+    # XXX consider using different operators, for clearer precedence at least
     def __add__(self, other):  return chain(self, Pex(other))
     def __radd__(self, other): return chain(Pex(other), self)
     def __or__(self, other):   return either(self, Pex(other))
@@ -68,6 +69,7 @@ class Unparsable(Exception):
 def label(p, string, *args):
     """Return an equivalent pex whose repr is (string % args), or just
     string if no args."""
+    assert isinstance(p, _Pex)
     return _Pex(((string,) + args if args else string),
                 p.run)
 
