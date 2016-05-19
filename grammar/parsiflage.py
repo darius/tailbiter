@@ -46,6 +46,9 @@ factor: ('+'|'-'|'~') factor | atom
 atom: '(' test ')' | NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
 """
 
+def Subst(string, maker):
+    return OP(string) >> maker   # XXX carry over location info
+
 NUMBER = Tok(T.NUMBER)
 STRING = Tok(T.STRING)
 NAME   = Tok(T.NAME)
@@ -56,9 +59,9 @@ atom =   P.delay(lambda:
           | NUMBER >> (lambda t: ast.Num(number_value(t.string),
                                          lineno=t.line,
                                          col_offset=t.start))
-          | STRING.plus() >> (lambda *tokens: ast.Str(''.join(t.string for t in tokens),
-                                                      lineno=t.line,
-                                                      col_offset=t.start))
+          | STRING.plus() >> (lambda *tokens: ast.Str(''.join(t.string for t in tokens), # XXX decode the .string values
+                                                      lineno=tokens[0].line,
+                                                      col_offset=tokens[0].start))
           | Tok(T.NAME, 'None') # XXX how is this different from a bare NAME?
           | Tok(T.NAME, 'True')
           | Tok(T.NAME, 'False')
@@ -67,23 +70,18 @@ atom =   P.delay(lambda:
                                         col_offset=t.start))
           )
 factor = P.delay(lambda:
-          ( (( (OP('+') >> (lambda: ast.UAdd())) # XXX location info here?
-             | (OP('-') >> (lambda: ast.USub()))
-             | (OP('~') >> (lambda: ast.Invert())))
-            + factor) >> ast.UnaryOp)  # XXX propagate location info
+          ( (( Subst('+', ast.UAdd)
+             | Subst('-', ast.USub)
+             | Subst('~', ast.Invert)) + factor) >> ast.UnaryOp)  # XXX propagate location info
           | atom)
 term =   P.seclude(
-            factor
-          + ((  (OP('*') >> (lambda: ast.Mult()))
-              | (OP('/') >> (lambda: ast.Div()))
-              | (OP('%') >> (lambda: ast.Mod()))
-              | (OP('//') >> (lambda: ast.FloorDiv())))
-             + factor + P.feed(ast.BinOp)).star())
+            factor + ((  Subst('*', ast.Mult)
+                       | Subst('/', ast.Div)
+                       | Subst('%', ast.Mod)
+                       | Subst('//', ast.FloorDiv)) + factor + P.feed(ast.BinOp)).star())
 arith_expr = P.seclude(
-            term
-          + ((  (OP('+') >> (lambda: ast.Add()))
-              | (OP('-') >> (lambda: ast.Sub())))
-             + term + P.feed(ast.BinOp)).star())
+            term + ((  Subst('+', ast.Add)
+                     | Subst('-', ast.Sub)) + term + P.feed(ast.BinOp)).star())
 test =   arith_expr
 
 def number_value(s):
