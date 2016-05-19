@@ -78,12 +78,12 @@ term =   P.seclude(
               | (OP('/') >> (lambda: ast.Div()))
               | (OP('%') >> (lambda: ast.Mod()))
               | (OP('//') >> (lambda: ast.FloorDiv())))
-             + factor + P.feed(lambda lhs, operator, rhs: ast.BinOp(operator, lhs, rhs))).star())
+             + factor + P.feed(ast.BinOp)).star())
 arith_expr = P.seclude(
             term
           + ((  (OP('+') >> (lambda: ast.Add()))
               | (OP('-') >> (lambda: ast.Sub())))
-             + term + P.feed(lambda lhs, operator, rhs: ast.BinOp(operator, lhs, rhs))).star())
+             + term + P.feed(ast.BinOp)).star())
 test =   arith_expr
 
 def number_value(s):
