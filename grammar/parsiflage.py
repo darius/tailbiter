@@ -70,7 +70,7 @@ factor = P.delay(lambda:
           ( (( (OP('+') >> (lambda: ast.UAdd())) # XXX location info here?
              | (OP('-') >> (lambda: ast.USub()))
              | (OP('~') >> (lambda: ast.Invert())))
-            + factor) >> (lambda operator, operand: ast.UnaryOp(operator, operand)))  # XXX propagate location info
+            + factor) >> ast.UnaryOp)  # XXX propagate location info
           | atom)
 term =   P.seclude(
             factor
