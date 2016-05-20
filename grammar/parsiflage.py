@@ -20,17 +20,17 @@ def main(argv):
 
 class Tok(P._Pex):
     "Matches a single lexical token of a given kind."
-    def __init__(self, kind, literal_string=None):
+    def __init__(self, kind, literal_string=None, keep=True):
         self.kind = kind
         self.expected = literal_string
+        self.keep = keep
     def run(self, s, far, state):
         i, vals = state
         token = s[i]
         if token.type != self.kind: return []
-        if self.expected is None:
+        if self.expected is not None and token.string != self.expected: return []
+        if self.keep:
             vals += (token,)
-        else:
-            if token.string != self.expected: return []
         return [(_step(far, i+1), vals)]
 
 def _step(far, i):
@@ -46,42 +46,59 @@ factor: ('+'|'-'|'~') factor | atom
 atom: '(' test ')' | NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
 """
 
-def Subst(string, maker):
-    return OP(string) >> maker   # XXX carry over location info
-
 NUMBER = Tok(T.NUMBER)
 STRING = Tok(T.STRING)
 NAME   = Tok(T.NAME)
 OP     = lambda s: Tok(T.OP, s)
+Punct  = lambda s: Tok(T.OP, s, keep=False)
+
+def Subst(string, maker):
+    def wtf(t):
+        assert hasattr(t, 'start')
+        print('wtf', maker.__name__, t.start[0], t.start[1])
+        import astpp
+        print('  ', astpp.dump(maker(lineno=t.start[0], col_offset=t.start[1]),
+                               include_attributes=True))
+        return maker(lineno=t.start[0], col_offset=t.start[1])
+    return OP(string) >> wtf
+    return OP(string) >> (lambda t: maker(lineno=t.start[0], col_offset=t.start[1]))
+
+def propagating(maker):
+    def wtf(node, *nodes):
+        if maker is not ast.UnaryOp:
+            return ast.copy_location(maker(node, *nodes), node) # XXX what's wrong with this in UnaryOp?
+        else:
+            return maker(node, *nodes, lineno=node.lineno, col_offset=node.col_offset)
+    return wtf
 
 atom =   P.delay(lambda:
-            OP('(') + test + OP(')')
+            Punct('(') + test + Punct(')')
           | NUMBER >> (lambda t: ast.Num(number_value(t.string),
-                                         lineno=t.line,
-                                         col_offset=t.start))
+                                         lineno=t.start[0],
+                                         col_offset=t.start[1]))
           | STRING.plus() >> (lambda *tokens: ast.Str(''.join(t.string for t in tokens), # XXX decode the .string values
-                                                      lineno=tokens[0].line,
-                                                      col_offset=tokens[0].start))
+                                                      lineno=tokens[0].start[0],
+                                                      col_offset=tokens[0].start[1]))
           | Tok(T.NAME, 'None') # XXX how is this different from a bare NAME?
           | Tok(T.NAME, 'True')
           | Tok(T.NAME, 'False')
           | NAME >> (lambda t: ast.Name(t.string, ast.Load(), # XXX we don't know the context yet
-                                        lineno=t.line,
-                                        col_offset=t.start))
+                                        lineno=t.start[0],
+                                        col_offset=t.start[1]))
           )
 factor = P.delay(lambda:
           ( (( Subst('+', ast.UAdd)
              | Subst('-', ast.USub)
-             | Subst('~', ast.Invert)) + factor) >> ast.UnaryOp)  # XXX propagate location info
+             | Subst('~', ast.Invert)) + factor) >> propagating(ast.UnaryOp))  # XXX propagate location info
           | atom)
 term =   P.seclude(
             factor + ((  Subst('*', ast.Mult)
                        | Subst('/', ast.Div)
                        | Subst('%', ast.Mod)
-                       | Subst('//', ast.FloorDiv)) + factor + P.feed(ast.BinOp)).star())
+                       | Subst('//', ast.FloorDiv)) + factor + P.feed(propagating(ast.BinOp))).star())
 arith_expr = P.seclude(
             term + ((  Subst('+', ast.Add)
-                     | Subst('-', ast.Sub)) + term + P.feed(ast.BinOp)).star())
+                     | Subst('-', ast.Sub)) + term + P.feed(propagating(ast.BinOp))).star())
 test =   arith_expr
 
 def number_value(s):
@@ -96,7 +113,7 @@ def parse(tokens):
         except ImportError:
             continue
         for tree in vals:
-            print(astpp.dump(tree))
+            print(astpp.dump(tree, include_attributes=True))
 
 def print_tokens(tokens):
     for t in tokens:
