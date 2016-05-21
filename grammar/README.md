@@ -22,7 +22,7 @@
 
 Vague plan: 
 
-* Make `parsiflage` actually produce Python ASTs.
+* Make `parsiflage` actually produce Python ASTs. DONE
 
 * Produce reasonable error messages.
 
