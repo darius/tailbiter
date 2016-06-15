@@ -81,20 +81,23 @@ Punct  = lambda s: Tok(T.OP, s, keep=False)
 def Subst(string, maker):
     return OP(string) >> (lambda t: maker(lineno=t.start[0], col_offset=t.start[1]))
 
+def wrapping(maker, wrapper):
+    return lambda t: maker(wrapper(t.string),
+                           lineno=t.start[0],
+                           col_offset=t.start[1])
+
 def propagating(maker):
     return lambda node, *nodes: ast.copy_location(maker(node, *nodes), node)
 
 atom =   P.delay(lambda:
             Punct('(') + test + Punct(')')
-          | NUMBER >> (lambda t: ast.Num(number_value(t.string),
-                                         lineno=t.start[0],
-                                         col_offset=t.start[1]))
+          | NUMBER >> wrapping(ast.Num, number_value)
           | STRING.plus() >> (lambda *tokens: ast.Str(''.join(t.string for t in tokens), # XXX decode the .string values
                                                       lineno=tokens[0].start[0],
                                                       col_offset=tokens[0].start[1]))
-          | Tok(T.NAME, 'None') # XXX how is this different from a bare NAME?
-          | Tok(T.NAME, 'True')
-          | Tok(T.NAME, 'False')
+          | Tok(T.NAME, 'None')  >> wrapping(ast.NameConstant, lambda s: None)
+          | Tok(T.NAME, 'True')  >> wrapping(ast.NameConstant, lambda s: True)
+          | Tok(T.NAME, 'False') >> wrapping(ast.NameConstant, lambda s: False)
           | NAME >> (lambda t: ast.Name(t.string, ast.Load(), # XXX we don't know the context yet
                                         lineno=t.start[0],
                                         col_offset=t.start[1]))
