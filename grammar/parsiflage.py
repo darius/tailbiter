@@ -79,10 +79,6 @@ OP     = lambda s: Tok(T.OP, s)
 Punct  = lambda s: Tok(T.OP, s, keep=False)
 
 def Subst(string, maker):
-    def wtf(t):
-        assert hasattr(t, 'start')
-        return maker(lineno=t.start[0], col_offset=t.start[1])
-    return OP(string) >> wtf
     return OP(string) >> (lambda t: maker(lineno=t.start[0], col_offset=t.start[1]))
 
 def propagating(maker):
