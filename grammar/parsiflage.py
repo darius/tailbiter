@@ -9,6 +9,32 @@ import ast
 import token as T
 from tokenize import tokenize
 
+# First an annoying necessary hack. Certain of the AST types (the
+# 'simple' ones) do not carry source-position attributes: the
+# constructors silently drop them. (If this is documented, I missed
+# it. I suppose the reason is efficiency; but this position info needs
+# to live *somewhere*, and the AST node is its natural home.) For all
+# of these types let's define subclasses that do retain these
+# attributes.
+
+position_attributes = dict(_attributes = ('lineno', 'col_offset'))
+
+def position_extend(class_):
+    return type(class_.__name__, (class_,), position_attributes)
+def map_extend(names):
+    return [position_extend(getattr(ast, name)) for name in names.split()]
+
+And, Or = map_extend('And Or')
+Add, Sub, Mult, Div, Mod, Pow, LShift, RShift, BitOr, BitXor, BitAnd, FloorDiv = \
+    map_extend('Add Sub Mult Div Mod Pow LShift RShift BitOr BitXor BitAnd FloorDiv')
+Invert, Not, UAdd, USub = \
+    map_extend('Invert Not UAdd USub')
+Eq, NotEq, Lt, LtE, Gt, GtE, Is, IsNot, In, NotIn = \
+    map_extend('Eq NotEq Lt LtE Gt GtE Is IsNot In NotIn')
+
+
+# OK, back to parsing.
+
 import parson3 as P
 
 def main(argv):
@@ -55,20 +81,13 @@ Punct  = lambda s: Tok(T.OP, s, keep=False)
 def Subst(string, maker):
     def wtf(t):
         assert hasattr(t, 'start')
-        print('wtf', maker.__name__, t.start[0], t.start[1])
-        import astpp
-        print('  ', astpp.dump(maker(lineno=t.start[0], col_offset=t.start[1]),
-                               include_attributes=True))
         return maker(lineno=t.start[0], col_offset=t.start[1])
     return OP(string) >> wtf
     return OP(string) >> (lambda t: maker(lineno=t.start[0], col_offset=t.start[1]))
 
 def propagating(maker):
     def wtf(node, *nodes):
-        if maker is not ast.UnaryOp:
-            return ast.copy_location(maker(node, *nodes), node) # XXX what's wrong with this in UnaryOp?
-        else:
-            return maker(node, *nodes, lineno=node.lineno, col_offset=node.col_offset)
+        return ast.copy_location(maker(node, *nodes), node)
     return wtf
 
 atom =   P.delay(lambda:
@@ -87,18 +106,18 @@ atom =   P.delay(lambda:
                                         col_offset=t.start[1]))
           )
 factor = P.delay(lambda:
-          ( (( Subst('+', ast.UAdd)
-             | Subst('-', ast.USub)
-             | Subst('~', ast.Invert)) + factor) >> propagating(ast.UnaryOp))  # XXX propagate location info
+          ( (( Subst('+', UAdd)
+             | Subst('-', USub)
+             | Subst('~', Invert)) + factor) >> propagating(ast.UnaryOp))  # XXX propagate location info
           | atom)
 term =   P.seclude(
-            factor + ((  Subst('*', ast.Mult)
-                       | Subst('/', ast.Div)
-                       | Subst('%', ast.Mod)
-                       | Subst('//', ast.FloorDiv)) + factor + P.feed(propagating(ast.BinOp))).star())
+            factor + ((  Subst('*', Mult)
+                       | Subst('/', Div)
+                       | Subst('%', Mod)
+                       | Subst('//', FloorDiv)) + factor + P.feed(propagating(ast.BinOp))).star())
 arith_expr = P.seclude(
-            term + ((  Subst('+', ast.Add)
-                     | Subst('-', ast.Sub)) + term + P.feed(propagating(ast.BinOp))).star())
+            term + ((  Subst('+', Add)
+                     | Subst('-', Sub)) + term + P.feed(propagating(ast.BinOp))).star())
 test =   arith_expr
 
 def number_value(s):
