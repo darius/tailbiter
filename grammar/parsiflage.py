@@ -82,9 +82,7 @@ def Subst(string, maker):
     return OP(string) >> (lambda t: maker(lineno=t.start[0], col_offset=t.start[1]))
 
 def propagating(maker):
-    def wtf(node, *nodes):
-        return ast.copy_location(maker(node, *nodes), node)
-    return wtf
+    return lambda node, *nodes: ast.copy_location(maker(node, *nodes), node)
 
 atom =   P.delay(lambda:
             Punct('(') + test + Punct(')')
