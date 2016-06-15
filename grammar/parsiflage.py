@@ -105,7 +105,7 @@ atom =   P.delay(lambda:
 factor = P.delay(lambda:
           ( (( Subst('+', UAdd)
              | Subst('-', USub)
-             | Subst('~', Invert)) + factor) >> propagating(ast.UnaryOp))  # XXX propagate location info
+             | Subst('~', Invert)) + factor) >> propagating(ast.UnaryOp))
           | atom)
 term =   P.seclude(
             factor + ((  Subst('*', Mult)
