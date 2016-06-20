@@ -71,8 +71,6 @@ term: factor (('*'|'/'|'%'|'//') factor)*
 factor: ('+'|'-'|'~') factor | power
 power: atom trailer* ('**' factor)?
 atom: '(' test ')' | NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
-
-XXX come back to these:
 trailer: '(' [arglist] ')'
 arglist: (argument ',')* argument [',']
 argument: test ['=' test]
@@ -95,6 +93,9 @@ def wrapping(maker, wrapper):
 def propagating(maker):
     return lambda node, *nodes: ast.copy_location(maker(node, *nodes), node)
 
+def hug(*args):
+    return list(args)
+
 atom =   P.delay(lambda:
             Punct('(') + test + Punct(')')
           | NUMBER >> wrapping(ast.Num, ast.literal_eval)
@@ -108,9 +109,13 @@ atom =   P.delay(lambda:
                                         lineno=t.start[0],
                                         col_offset=t.start[1]))
           )
+arglist = P.delay(lambda:
+            (test + Punct(',')).star() + test + Punct(',').maybe())
+trailer = (Punct('(') + (arglist.maybe() >> hug) + Punct(')')
+           + propagating(lambda f, args: ast.Call(f, args, (), None, None)))
 power  = P.delay(lambda:
          P.seclude(
-            atom + (Subst('**', Pow) + factor + propagating(ast.BinOp)).maybe()))
+            atom + trailer.star() + (Subst('**', Pow) + factor + propagating(ast.BinOp)).maybe()))
 factor = P.delay(lambda:
           ( (( Subst('+', UAdd)
              | Subst('-', USub)
