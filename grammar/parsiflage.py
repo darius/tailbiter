@@ -97,8 +97,8 @@ def propagating(maker):
 
 atom =   P.delay(lambda:
             Punct('(') + test + Punct(')')
-          | NUMBER >> wrapping(ast.Num, number_value)
-          | STRING.plus() >> (lambda *tokens: ast.Str(''.join(t.string for t in tokens), # XXX decode the .string values
+          | NUMBER >> wrapping(ast.Num, ast.literal_eval)
+          | STRING.plus() >> (lambda *tokens: ast.Str(ast.literal_eval(' '.join(t.string for t in tokens)),
                                                       lineno=tokens[0].start[0],
                                                       col_offset=tokens[0].start[1]))
           | Tok(T.NAME, 'None')  >> wrapping(ast.NameConstant, lambda s: None)
@@ -125,9 +125,6 @@ arith_expr = P.seclude(
             term + ((  Subst('+', Add)
                      | Subst('-', Sub)) + term + propagating(ast.BinOp)).star())
 test =   arith_expr
-
-def number_value(s):
-    return ast.literal_eval(s)
 
 def parse(tokens):
     far = [0]
