@@ -110,7 +110,7 @@ atom =   P.delay(lambda:
           )
 power  = P.delay(lambda:
          P.seclude(
-            atom + (Subst('**', Pow) + factor + P.feed(propagating(ast.BinOp))).maybe()))
+            atom + (Subst('**', Pow) + factor + propagating(ast.BinOp)).maybe()))
 factor = P.delay(lambda:
           ( (( Subst('+', UAdd)
              | Subst('-', USub)
@@ -120,10 +120,10 @@ term =   P.seclude(
             factor + ((  Subst('*', Mult)
                        | Subst('/', Div)
                        | Subst('%', Mod)
-                       | Subst('//', FloorDiv)) + factor + P.feed(propagating(ast.BinOp))).star())
+                       | Subst('//', FloorDiv)) + factor + propagating(ast.BinOp)).star())
 arith_expr = P.seclude(
             term + ((  Subst('+', Add)
-                     | Subst('-', Sub)) + term + P.feed(propagating(ast.BinOp))).star())
+                     | Subst('-', Sub)) + term + propagating(ast.BinOp)).star())
 test =   arith_expr
 
 def number_value(s):
