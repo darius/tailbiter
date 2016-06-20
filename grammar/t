@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail; shopt -s failglob  # 'Bash strict mode'
+
+# Test suite for the parser. (Crude!) 
+
+for f in eg_*.py
+do
+    ./test-parse "$f"
+done

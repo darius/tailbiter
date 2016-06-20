@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail; shopt -s failglob  # 'Bash strict mode'
+
+# Define all the expected parse outputs to be what the current code produces.
+
+for f in "$@"
+do
+    python3 parsiflage.py "$f" >ref/"$f"
+done
