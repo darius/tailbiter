@@ -127,7 +127,7 @@ arith_expr = P.seclude(
 test =   arith_expr
 
 def number_value(s):
-    return int(s)               # XXX for now
+    return ast.literal_eval(s)
 
 def parse(tokens):
     far = [0]
