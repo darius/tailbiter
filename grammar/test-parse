@@ -2,6 +2,7 @@
 set -euo pipefail; shopt -s failglob  # 'Bash strict mode'
 
 # Run the parser and check that it succeeds and produces the expected output.
+# This uses out/ and ref/ directories which I didn't check in to the repo.
 
 python3 parsiflage.py "$1" >out/"$1"
 diff -u ref/"$1" out/
