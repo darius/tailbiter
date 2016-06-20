@@ -68,8 +68,14 @@ def _step(far, i):
 test: arith_expr
 arith_expr: term (('+'|'-') term)*
 term: factor (('*'|'/'|'%'|'//') factor)*
-factor: ('+'|'-'|'~') factor | atom
+factor: ('+'|'-'|'~') factor | power
+power: atom trailer* ('**' factor)?
 atom: '(' test ')' | NAME | NUMBER | STRING+ | 'None' | 'True' | 'False'
+
+XXX come back to these:
+trailer: '(' [arglist] ')'
+arglist: (argument ',')* argument [',']
+argument: test ['=' test]
 """
 
 NUMBER = Tok(T.NUMBER)
@@ -102,11 +108,14 @@ atom =   P.delay(lambda:
                                         lineno=t.start[0],
                                         col_offset=t.start[1]))
           )
+power  = P.delay(lambda:
+         P.seclude(
+            atom + (Subst('**', Pow) + factor + P.feed(propagating(ast.BinOp))).maybe()))
 factor = P.delay(lambda:
           ( (( Subst('+', UAdd)
              | Subst('-', USub)
              | Subst('~', Invert)) + factor) >> propagating(ast.UnaryOp))
-          | atom)
+          | power)
 term =   P.seclude(
             factor + ((  Subst('*', Mult)
                        | Subst('/', Div)
