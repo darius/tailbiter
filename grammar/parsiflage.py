@@ -65,6 +65,8 @@ def _step(far, i):
     return i
 
 """
+expr_stmt: testlist_expr ('=' testlist_expr)*
+testlist_expr: test
 test: arith_expr
 arith_expr: term (('+'|'-') term)*
 term: factor (('*'|'/'|'%'|'//') factor)*
@@ -83,31 +85,47 @@ OP     = lambda s: Tok(T.OP, s)
 Punct  = lambda s: Tok(T.OP, s, keep=False)
 
 def Subst(string, maker):
-    return OP(string) >> (lambda t: maker(lineno=t.start[0], col_offset=t.start[1]))
+    return OP(string) >> (lambda t: lambda ctx: maker(lineno=t.start[0], col_offset=t.start[1]))
 
 def wrapping(maker, wrapper):
-    return lambda t: maker(wrapper(t.string),
-                           lineno=t.start[0],
-                           col_offset=t.start[1])
+    return lambda t: lambda ctx: maker(wrapper(t.string),
+                                       lineno=t.start[0],
+                                       col_offset=t.start[1])
 
 def propagating(maker):
-    return lambda node, *nodes: ast.copy_location(maker(node, *nodes), node)
+    result = lambda node_fn, *node_fns: lambda ctx: next(ast.copy_location(maker(node, *[n(ctx) for n in node_fns]), node)
+                                                         for node in [node_fn(ctx)])
+    result.__name__ = maker.__name__
+    return result
 
 def hug(*args):
-    return list(args)
+    return lambda ctx: [arg(ctx) for arg in args]
+
+def maybe_assignment(*expr_fns):
+    if len(expr_fns) == 1:
+        node0 = expr_fns[0](ast.Load())
+        stmt = ast.Expr(node0)
+    else:
+        lhses = [fn(ast.Store()) for fn in expr_fns[:-1]]
+        node0 = lhses[0]
+        stmt = ast.Assign(lhses, expr_fns[-1](ast.Load()))
+    return ast.copy_location(stmt, node0)
+
+def fill_context(ctx):
+    return lambda f: f(ctx)
 
 atom =   P.delay(lambda:
             Punct('(') + test + Punct(')')
           | NUMBER >> wrapping(ast.Num, ast.literal_eval)
-          | STRING.plus() >> (lambda *tokens: ast.Str(ast.literal_eval(' '.join(t.string for t in tokens)),
-                                                      lineno=tokens[0].start[0],
-                                                      col_offset=tokens[0].start[1]))
+          | STRING.plus() >> (lambda *tokens: lambda ctx: ast.Str(ast.literal_eval(' '.join(t.string for t in tokens)),
+                                                                  lineno=tokens[0].start[0],
+                                                                  col_offset=tokens[0].start[1]))
           | Tok(T.NAME, 'None')  >> wrapping(ast.NameConstant, lambda s: None)
           | Tok(T.NAME, 'True')  >> wrapping(ast.NameConstant, lambda s: True)
           | Tok(T.NAME, 'False') >> wrapping(ast.NameConstant, lambda s: False)
-          | NAME >> (lambda t: ast.Name(t.string, ast.Load(), # XXX we don't know the context yet
-                                        lineno=t.start[0],
-                                        col_offset=t.start[1]))
+          | NAME >> (lambda t: lambda ctx: ast.Name(t.string, ctx,
+                                                    lineno=t.start[0],
+                                                    col_offset=t.start[1]))
           )
 arglist = P.delay(lambda:
             (test + Punct(',')).star() + test + Punct(',').maybe())
@@ -131,7 +149,14 @@ arith_expr = P.seclude(
                      | Subst('-', Sub)) + term + propagating(ast.BinOp)).star())
 test =   arith_expr
 
-top = test # + P.end   XXX
+expr_stmt = P.seclude(
+              test + (Punct('=') + test).star()
+            + maybe_assignment)
+
+#expr_stmt = P.seclude(
+#            test + fill_context(ast.Load()))
+
+top = expr_stmt # + P.end   XXX
 
 def parse(tokens):
     far = [0]
@@ -142,6 +167,7 @@ def parse(tokens):
         except ImportError:
             continue
         for tree in vals:
+#            print(tree)
             print(astpp.dump(tree, include_attributes=True))
 
 def print_tokens(tokens):
