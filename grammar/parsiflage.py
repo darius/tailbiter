@@ -131,9 +131,11 @@ arith_expr = P.seclude(
                      | Subst('-', Sub)) + term + propagating(ast.BinOp)).star())
 test =   arith_expr
 
+top = test # + P.end   XXX
+
 def parse(tokens):
     far = [0]
-    for i, vals in arith_expr.run(tokens[1:], far, (0, ())):
+    for i, vals in top.run(tokens[1:], far, (0, ())):
         print(i, tokens[i+1:])
         try:
             import astpp
