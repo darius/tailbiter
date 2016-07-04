@@ -71,6 +71,11 @@ def _step(far, i):
     return i
 
 """
+file_input: (NEWLINE | stmt)* ENDMARKER
+stmt: simple_stmt | compound_stmt
+simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
+small_stmt: expr_stmt | flow_stmt | import_stmt | assert_stmt
+
 expr_stmt: testlist_expr ('=' testlist_expr)*
 testlist_expr: test
 test: arith_expr
@@ -107,6 +112,10 @@ def propagating(maker):
 def hug(*args):
     return lambda ctx: [arg(ctx) for arg in args]
 
+def make_module(*stmts):
+    m = ast.Module(list(stmts))
+    return ast.copy_location(m, stmts[0]) if stmts else m
+
 def maybe_assignment(*expr_fns):
     if len(expr_fns) == 1:
         node0 = expr_fns[0](ast.Load())
@@ -136,7 +145,7 @@ atom =   P.delay(lambda:
 arglist = P.delay(lambda:
             (test + Punct(',')).star() + test + Punct(',').maybe())
 trailer = (Punct('(') + (arglist.maybe() >> hug) + Punct(')')
-           + propagating(lambda f, args: ast.Call(f, args, (), None, None)))
+           + propagating(lambda f, args: ast.Call(f, args, [], None, None)))
 power  = P.delay(lambda:
          P.seclude(
             atom + trailer.star() + (Subst('**', Pow) + factor + propagating(ast.BinOp)).maybe()))
@@ -159,18 +168,19 @@ expr_stmt = P.seclude(
               test + (Punct('=') + test).star()
             + maybe_assignment)
 
-#expr_stmt = P.seclude(
-#            test + fill_context(ast.Load()))
+stmt = expr_stmt
 
-top = expr_stmt # + P.end   XXX
+file_input = (Tok(56, keep=False)  # 'ENCODING' token -- yeah, no name for it
+              + (Tok(T.NEWLINE, keep=False) | stmt).star()
+              + Tok(T.ENDMARKER, keep=False)) >> make_module
+
+top = file_input
 
 def parse(f):
     tokens = list(tokenize(f.readline))
-    tokens = tokens[1:]
     far = [0]
     for i, vals in top.run(tokens, far, (0, ())):
-        if 0:
-            # TODO: skip newline, eof
+        if 1:
             assert i == len(tokens), "not full parse: %d of %r" % (i, tokens)
         assert len(vals) == 1
         return vals[0]
