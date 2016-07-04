@@ -35,7 +35,11 @@ Eq, NotEq, Lt, LtE, Gt, GtE, Is, IsNot, In, NotIn = \
 
 # OK, back to parsing.
 
-import parson3 as P
+if __name__ == '__main__':
+    # XXX temporary hack during development
+    import parson3 as P
+else:
+    from . import parson3 as P
 
 def main(argv):
     filename = argv[1]
