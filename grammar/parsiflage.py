@@ -39,10 +39,16 @@ import parson3 as P
 
 def main(argv):
     filename = argv[1]
-    with open(filename, 'rb') as f:
-        tokens = list(tokenize(f.readline))
-    print_tokens(tokens)
-    parse(tokens)
+    if 0:
+        with open(filename, 'rb') as f:
+            tokens = list(tokenize(f.readline))
+        print_tokens(tokens)
+        demo_parse(tokens)
+    else:
+        with open(filename, 'rb') as f:
+            t = parse(f)
+        import astpp
+        print(astpp.dump(t, include_attributes=True))
 
 class Tok(P._Pex):
     "Matches a single lexical token of a given kind."
@@ -158,7 +164,18 @@ expr_stmt = P.seclude(
 
 top = expr_stmt # + P.end   XXX
 
-def parse(tokens):
+def parse(f):
+    tokens = list(tokenize(f.readline))
+    tokens = tokens[1:]
+    far = [0]
+    for i, vals in top.run(tokens, far, (0, ())):
+        if 0:
+            # TODO: skip newline, eof
+            assert i == len(tokens), "not full parse: %d of %r" % (i, tokens)
+        assert len(vals) == 1
+        return vals[0]
+
+def demo_parse(tokens):
     far = [0]
     for i, vals in top.run(tokens[1:], far, (0, ())):
         print(i, tokens[i+1:])
