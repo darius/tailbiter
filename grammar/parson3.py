@@ -27,6 +27,15 @@ def Pex(x):
     if callable(x):         return feed(x)
     assert False
 
+def trace(message):
+    "A peg that succeeds, and says so."
+    # TODO: better debugging means
+    def tracer(s, far, state):
+        (i, vals) = state
+        print(message, i, vals)
+        return [(i, vals)]
+    return _Pex('trace', tracer)
+
 class _Pex:
     "A parsing expression."
     def __init__(self, face, run):
