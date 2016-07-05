@@ -54,17 +54,31 @@ def main(argv):
         import astpp
         print(astpp.dump(t, include_attributes=True))
 
+class Name(P._Pex):
+    def __init__(self):
+        self.face = 'XXX'
+    def run(self, s, far, state):
+        i, vals = state
+        token = s[i]
+        if token.type != T.NAME or token.string in keywords:
+            return []
+        vals += (token,)
+        return [(_step(far, i+1), vals)]
+
 class Tok(P._Pex):
     "Matches a single lexical token of a given kind."
     def __init__(self, kind, literal_string=None, keep=True):
         self.kind = kind
         self.expected = literal_string
         self.keep = keep
+        self.face = 'XXX'
     def run(self, s, far, state):
         i, vals = state
         token = s[i]
-        if token.type != self.kind: return []
-        if self.expected is not None and token.string != self.expected: return []
+        if token.type != self.kind:
+            return []
+        if self.expected is not None and token.string != self.expected:
+            return []
         if self.keep:
             vals += (token,)
         return [(_step(far, i+1), vals)]
@@ -79,6 +93,10 @@ file_input: (NEWLINE | stmt)* ENDMARKER
 stmt: simple_stmt | compound_stmt
 simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
 small_stmt: expr_stmt | flow_stmt | import_stmt | assert_stmt
+
+compound_stmt: if_stmt | while_stmt | for_stmt | funcdef | classdef | decorated
+if_stmt: 'if' test ':' suite ('elif' test ':' suite)* ['else' ':' suite]
+suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
 
 expr_stmt: testlist_expr ('=' testlist_expr)*
 testlist_expr: test
@@ -95,9 +113,15 @@ argument: test ['=' test]
 
 NUMBER = Tok(T.NUMBER)
 STRING = Tok(T.STRING)
-NAME   = Tok(T.NAME)
+NAME   = Name()
 OP     = lambda s: Tok(T.OP, s)
 Punct  = lambda s: Tok(T.OP, s, keep=False)
+
+keywords = set()
+
+def Kwd(s):
+    keywords.add(s)
+    return Tok(T.NAME, s, keep=False)
 
 def Subst(string, maker):
     return OP(string) >> (lambda t: lambda ctx: maker(lineno=t.start[0], col_offset=t.start[1]))
@@ -119,6 +143,15 @@ def hug(*args):
 def make_module(*stmts):
     m = ast.Module(list(stmts))
     return ast.copy_location(m, stmts[0]) if stmts else m
+
+def make_if(test, then, *rest):
+    # (This'd be simpler with a different form of the grammar.)
+    test = test(ast.Load())
+    if not rest:         else_ = []
+    elif len(rest) == 1: else_ = rest[0]
+    else:                else_ = make_if(*rest)
+    # XXX location should come from 'if' token
+    return ast.copy_location(ast.If(test, then, else_), test)
 
 def maybe_assignment(*expr_fns):
     if len(expr_fns) == 1:
@@ -172,7 +205,23 @@ expr_stmt = P.seclude(
               test + (Punct('=') + test).star()
             + maybe_assignment)
 
-stmt = expr_stmt
+simple_stmt = expr_stmt + Tok(T.NEWLINE, keep=False)
+
+stmt = P.delay(lambda: simple_stmt | compound_stmt)
+
+suite = (
+      simple_stmt
+    | (Tok(T.NEWLINE, keep=False) + Tok(T.INDENT, keep=False) + stmt.plus() + Tok(T.DEDENT, keep=False))
+) >> (lambda *stmts: list(stmts))
+
+if_stmt = P.seclude(
+      Kwd('if') + test + Punct(':') + suite
+    + (Kwd('elif') + test + Punct(':') + suite).star()
+    + (Kwd('else') + Punct(':') + suite).maybe()
+    + make_if
+)
+
+compound_stmt = if_stmt
 
 file_input = (Tok(56, keep=False)  # 'ENCODING' token -- yeah, no name for it
               + (Tok(T.NEWLINE, keep=False) | stmt).star()
@@ -182,6 +231,7 @@ top = file_input
 
 def parse(f):
     tokens = list(tokenize(f.readline))
+#    print_tokens(tokens)
     far = [0]
     for i, vals in top.run(tokens, far, (0, ())):
         if 1:
@@ -191,15 +241,17 @@ def parse(f):
 
 def demo_parse(tokens):
     far = [0]
-    for i, vals in top.run(tokens[1:], far, (0, ())):
-        print(i, tokens[i+1:])
+    for i, vals in top.run(tokens, far, (0, ())):
+        print(i, tokens[i:])
+        print('vals', vals)
         try:
             import astpp
         except ImportError:
             continue
         for tree in vals:
-#            print(tree)
+            print(tree)
             print(astpp.dump(tree, include_attributes=True))
+    print('far', far[0])
 
 def print_tokens(tokens):
     for t in tokens:
