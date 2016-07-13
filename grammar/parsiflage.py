@@ -144,14 +144,15 @@ def make_module(*stmts):
     m = ast.Module(list(stmts))
     return ast.copy_location(m, stmts[0]) if stmts else m
 
-def make_if(test, then, *rest):
+def make_if(kwd, test, then, *rest):
     # (This'd be simpler with a different form of the grammar.)
     test = test(ast.Load())
     if not rest:         else_ = []
     elif len(rest) == 1: else_ = rest[0]
-    else:                else_ = make_if(*rest)
-    # XXX location should come from 'if' token
-    return ast.copy_location(ast.If(test, then, else_), test)
+    else:                else_ = [make_if(*rest)]
+    return ast.If(test, then, else_,
+                  lineno=kwd.start[0],
+                  col_offset=kwd.start[1])
 
 def maybe_assignment(*expr_fns):
     if len(expr_fns) == 1:
@@ -215,8 +216,8 @@ suite = (
 ) >> (lambda *stmts: list(stmts))
 
 if_stmt = P.seclude(
-      Kwd('if') + test + Punct(':') + suite
-    + (Kwd('elif') + test + Punct(':') + suite).star()
+      Kwd('if', keep=True) + test + Punct(':') + suite
+    + (Kwd('elif', keep=True) + test + Punct(':') + suite).star()
     + (Kwd('else') + Punct(':') + suite).maybe()
     + make_if
 )
