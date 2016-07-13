@@ -119,9 +119,9 @@ Punct  = lambda s: Tok(T.OP, s, keep=False)
 
 keywords = set()
 
-def Kwd(s):
+def Kwd(s, keep=False):
     keywords.add(s)
-    return Tok(T.NAME, s, keep=False)
+    return Tok(T.NAME, s, keep=keep)
 
 def Subst(string, maker):
     return OP(string) >> (lambda t: lambda ctx: maker(lineno=t.start[0], col_offset=t.start[1]))
