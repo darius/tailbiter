@@ -92,9 +92,9 @@ def _step(far, i):
 file_input: (NEWLINE | stmt)* ENDMARKER
 stmt: simple_stmt | compound_stmt
 simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
-small_stmt: expr_stmt | flow_stmt | import_stmt | assert_stmt
+small_stmt: expr_stmt
 
-compound_stmt: if_stmt | while_stmt | for_stmt | funcdef | classdef | decorated
+compound_stmt: if_stmt
 if_stmt: 'if' test ':' suite ('elif' test ':' suite)* ['else' ':' suite]
 suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
 
