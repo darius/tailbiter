@@ -69,17 +69,8 @@ class Instruction(Assembly):
         if arg is None: return bytes([self.opcode])
         else:           return bytes([self.opcode, arg % 256, arg // 256])
     def plumb(self, depths):
-        depths.append(depths[-1] + stack_effect(self.opcode, self.arg))
-
-or_pop_ops = (dis.opmap['JUMP_IF_TRUE_OR_POP'],
-              dis.opmap['JUMP_IF_FALSE_OR_POP'])
-
-def stack_effect(opcode, oparg):
-    if opcode in or_pop_ops:
-        return -1
-    else:
-        if isinstance(oparg, Label): oparg = 0
-        return dis.stack_effect(opcode, oparg)
+        arg = 0 if isinstance(self.arg, Label) else self.arg
+        depths.append(depths[-1] + dis.stack_effect(self.opcode, arg))
 
 class Chain(Assembly):
     def __init__(self, assembly1, assembly2):
@@ -271,7 +262,7 @@ class CodeGen(ast.NodeVisitor):
         op_jump = self.ops_bool[type(t.op)]
         def compose(left, right):
             after = Label()
-            return left + op_jump(after) + right + after
+            return left + op_jump(after) + OffsetStack() + right + after
         return reduce(compose, map(self, t.values))
     ops_bool = {ast.And: op.JUMP_IF_FALSE_OR_POP,
                 ast.Or:  op.JUMP_IF_TRUE_OR_POP}
