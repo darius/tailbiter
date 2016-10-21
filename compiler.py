@@ -99,6 +99,10 @@ class Chain(Assembly):
         self.part1.plumb(depths)
         self.part2.plumb(depths)
 
+class OffsetStack(Assembly):
+    def plumb(self, depths):
+        depths.append(depths[-1] - 1)
+
 def denotation(opcode):
     if opcode < dis.HAVE_ARGUMENT:
         return Instruction(opcode, None)
@@ -208,7 +212,13 @@ class CodeGen(ast.NodeVisitor):
                 + orelse + self(t.orelse)
                 + after)
 
-    visit_IfExp = visit_If
+    def visit_IfExp(self, t):
+        orelse, after = Label(), Label()
+        return (           self(t.test) + op.POP_JUMP_IF_FALSE(orelse)
+                         + self(t.body) + op.JUMP_FORWARD(after)
+                + OffsetStack()
+                + orelse + self(t.orelse)
+                + after)
 
     def visit_Dict(self, t):
         return (op.BUILD_MAP(min(0xFFFF, len(t.keys)))
@@ -303,7 +313,7 @@ class CodeGen(ast.NodeVisitor):
         return (         op.SETUP_LOOP(after) + self(t.iter) + op.GET_ITER
                 + loop + op.FOR_ITER(end) + self(t.target)
                        + self(t.body) + op.JUMP_ABSOLUTE(loop)
-                + end  + op.POP_BLOCK
+                + end  + OffsetStack() + op.POP_BLOCK
                 + after)
 
     def visit_Return(self, t):

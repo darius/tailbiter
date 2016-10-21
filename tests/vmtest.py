@@ -50,6 +50,12 @@ class VmTestCase(unittest.TestCase):
         # Same thing for tailbiter-compiled code run in byterun.
         tb_code = compiler.code_for_module(filename, filename, ast.parse(source_code))
 
+        if ref_code.co_stacksize != tb_code.co_stacksize:
+            print("Different stacksize: ref %d, tb %d" % (ref_code.co_stacksize,
+                                                          tb_code.co_stacksize))
+            print(source_code)
+            self.assertTrue(False)
+
         if 0: dis_code(tb_code)
 
         tb_value, tb_exc, tb_stdout = self.run_in_vm(tb_code)
