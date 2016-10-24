@@ -292,20 +292,17 @@ class CodeGen(ast.NodeVisitor):
                 + op.IMPORT_NAME(self.names[name]))
 
     def visit_While(self, t):
-        loop, end, after = Label(), Label(), Label()
-        return (         op.SETUP_LOOP(after)
-                + loop + self(t.test) + op.POP_JUMP_IF_FALSE(end)
+        loop, end = Label(), Label()
+        return (  loop + self(t.test) + op.POP_JUMP_IF_FALSE(end)
                        + self(t.body) + op.JUMP_ABSOLUTE(loop)
-                + end  + op.POP_BLOCK
-                + after)
+                + end)
 
     def visit_For(self, t):
-        loop, end, after = Label(), Label(), Label()
-        return (         op.SETUP_LOOP(after) + self(t.iter) + op.GET_ITER
+        loop, end = Label(), Label()
+        return (         self(t.iter) + op.GET_ITER
                 + loop + op.FOR_ITER(end) + self(t.target)
                        + self(t.body) + op.JUMP_ABSOLUTE(loop)
-                + end  + OffsetStack() + op.POP_BLOCK
-                + after)
+                + end  + OffsetStack())
 
     def visit_Return(self, t):
         return ((self(t.value) if t.value else self.load_const(None))
