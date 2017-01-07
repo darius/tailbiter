@@ -62,16 +62,11 @@ class Instruction(Assembly):
         if arg is None: return bytes([self.opcode])
         else:           return bytes([self.opcode, arg % 256, arg // 256])
     def plumb(self, depths):
-        depths.append(depths[-1] + stack_effect(self.opcode, self.arg))
-or_pop_ops = (dis.opmap['JUMP_IF_TRUE_OR_POP'],
-              dis.opmap['JUMP_IF_FALSE_OR_POP'])
-
-def stack_effect(opcode, oparg):
-    if opcode in or_pop_ops:
-        return -1
-    else:
-        if isinstance(oparg, Label): oparg = 0
-        return dis.stack_effect(opcode, oparg)
+        arg = 0 if isinstance(self.arg, Label) else self.arg
+        depths.append(depths[-1] + dis.stack_effect(self.opcode, arg))
+class OffsetStack(Assembly):
+    def plumb(self, depths):
+        depths.append(depths[-1] - 1)
 class Chain(Assembly):
     def __init__(self, assembly1, assembly2):
         self.part1 = assembly1
@@ -158,7 +153,7 @@ class CodeGen(ast.NodeVisitor):
 
     def collect_constants(self):
         return tuple([constant for constant,_ in collect(self.constants)])
-    def visit_NameConstant(self, t): return self.load_const(t.value)
+    def visit_NameConstant(self, t): return self.load_const(t.value) # for None/True/False
     def visit_Num(self, t):          return self.load_const(t.n)
     def visit_Str(self, t):          return self.load_const(t.s)
     visit_Bytes = visit_Str
@@ -187,8 +182,13 @@ class CodeGen(ast.NodeVisitor):
                          + self(t.body) + op.JUMP_FORWARD(after)
                 + orelse + self(t.orelse)
                 + after)
-
-    visit_IfExp = visit_If
+    def visit_IfExp(self, t):
+        orelse, after = Label(), Label()
+        return (           self(t.test) + op.POP_JUMP_IF_FALSE(orelse)
+                         + self(t.body) + op.JUMP_FORWARD(after)
+                + OffsetStack()
+                + orelse + self(t.orelse)
+                + after)
     def visit_Dict(self, t):
         return (op.BUILD_MAP(min(0xFFFF, len(t.keys)))
                 + concat([self(v) + self(k) + op.STORE_MAP
@@ -205,7 +205,7 @@ class CodeGen(ast.NodeVisitor):
     def visit_Tuple(self, t): return self.visit_sequence(t, op.BUILD_TUPLE)
 
     def visit_sequence(self, t, build_op):
-        if   isinstance(t.ctx, ast.Load):
+        if isinstance(t.ctx, ast.Load):
             return self(t.elts) + build_op(len(t.elts))
         elif isinstance(t.ctx, ast.Store):
             return op.UNPACK_SEQUENCE(len(t.elts)) + self(t.elts)
@@ -234,7 +234,7 @@ class CodeGen(ast.NodeVisitor):
         op_jump = self.ops_bool[type(t.op)]
         def compose(left, right):
             after = Label()
-            return left + op_jump(after) + right + after
+            return left + op_jump(after) + OffsetStack() + right + after
         return reduce(compose, map(self, t.values))
     ops_bool = {ast.And: op.JUMP_IF_FALSE_OR_POP,
                 ast.Or:  op.JUMP_IF_TRUE_OR_POP}
@@ -261,20 +261,17 @@ class CodeGen(ast.NodeVisitor):
                 + self.load_const(fromlist)
                 + op.IMPORT_NAME(self.names[name]))
     def visit_While(self, t):
-        loop, end, after = Label(), Label(), Label()
-        return (         op.SETUP_LOOP(after)
-                + loop + self(t.test) + op.POP_JUMP_IF_FALSE(end)
+        loop, end = Label(), Label()
+        return (  loop + self(t.test) + op.POP_JUMP_IF_FALSE(end)
                        + self(t.body) + op.JUMP_ABSOLUTE(loop)
-                + end  + op.POP_BLOCK
-                + after)
+                + end)
 
     def visit_For(self, t):
-        loop, end, after = Label(), Label(), Label()
-        return (         op.SETUP_LOOP(after) + self(t.iter) + op.GET_ITER
+        loop, end = Label(), Label()
+        return (         self(t.iter) + op.GET_ITER
                 + loop + op.FOR_ITER(end) + self(t.target)
                        + self(t.body) + op.JUMP_ABSOLUTE(loop)
-                + end  + op.POP_BLOCK
-                + after)
+                + end  + OffsetStack())
 
 if __name__ == '__main__':
     sys.argv.pop(0)

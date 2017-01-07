@@ -80,7 +80,7 @@ class CodeGen(ast.NodeVisitor):
 
     def collect_constants(self):
         return tuple([constant for constant,_ in collect(self.constants)])
-    def visit_NameConstant(self, t): return self.load_const(t.value)
+    def visit_NameConstant(self, t): return self.load_const(t.value) # for None/True/False
     def visit_Num(self, t):          return self.load_const(t.n)
     def visit_Str(self, t):          return self.load_const(t.s)
     visit_Bytes = visit_Str
