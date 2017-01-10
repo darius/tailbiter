@@ -1,7 +1,9 @@
 """
-Original by Kragen Sitaker.
-Now writes to subdirectories; supports versions like handaxeweb.lua;
-and also supports versions of the form "v2+".
+Original by Kragen Sitaker. Refactored and hacked to:
+- look for code in ```quoted blocks``` instead of indented blocks
+- support versions like handaxeweb.lua
+- also support versions of the form "v2+"
+- write to subdirectories
 """
 
 import re, sys
