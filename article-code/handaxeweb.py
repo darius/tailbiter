@@ -1,6 +1,7 @@
 """
 Original by Kragen Sitaker.
-Now also supports versions of the form "v2+".
+Now writes to subdirectories; supports versions like handaxeweb.lua;
+and also supports versions of the form "v2+".
 """
 
 import re, sys
