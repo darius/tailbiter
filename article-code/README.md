@@ -20,6 +20,10 @@ and similarly for `tailbiter2`: the main change was to how dict
 literals get compiled. (The `BUILD_MAP` operation changes to expect
 all of the keys and values on the stack before it creates the dict.)
 
+For Python 3.6 there's `tailbiter2_py36.py`. Currently it can't
+compile itself, because it needs to generate a jump with a
+more-than-one-byte offset.
+
 After `tailbiter2` I added a few more features to be able to compile
 `byterun`; the result is `../compiler.py`. (It's for Python 3.4 only,
 for now, because those particular features changed in Python 3.5.)
