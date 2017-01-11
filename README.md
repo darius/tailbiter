@@ -12,3 +12,7 @@ compiler-compiled compiler and interpreter on the interpreter.
 
 This is a continuation of
 https://github.com/darius/500lines/tree/master/bytecode-compiler
+
+See
+[article-code](https://github.com/darius/tailbiter/tree/master/article-code)
+for the version published in [Code Words](https://codewords.recurse.com/issues/seven).

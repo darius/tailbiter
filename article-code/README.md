@@ -1,5 +1,5 @@
-Here are source files extracted from my [Code Words]() article on
-compiling
+Here are source files extracted from my [Code Words](https://codewords.recurse.com/issues/seven)
+article on compiling
 Python. There are three versions of the compiler, each handling a
 larger subset of Python. To run them, you need Python 3.4. You
 also need `check_subset.py` from the parent directory; copy it down
