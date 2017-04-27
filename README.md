@@ -15,5 +15,5 @@ https://github.com/darius/500lines/tree/master/bytecode-compiler
 
 See
 [article-code](https://github.com/darius/tailbiter/tree/master/article-code)
-for the version published in [Code Words](https://codewords.recurse.com/issues/seven).
+for the version published in [Code Words](https://codewords.recurse.com/issues/seven/dragon-taming-with-tailbiter-a-bytecode-compiler).
 Also, for tweaks to run in Python 3.5 and 3.6.
